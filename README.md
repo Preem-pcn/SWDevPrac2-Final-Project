@@ -80,7 +80,7 @@ scripts/seed.mjs            เตรียมข้อมูลตัวอย�
 - **วันที่เป็น UTC ตาม backend:** ช่วง 00:00–07:00 เวลาไทย "วันนี้" ในระบบยังเป็นวันก่อนหน้า
 - **Member เห็นแค่ booking ของตัวเอง:** หน้า Spots ของ member จึงบอกไม่ได้ว่าช่องไหนคนอื่นจองแล้ว ต้องรู้ตอนกดยืนยัน ส่วน admin เห็นครบ
 - **ลบ spot เป็น soft delete:** spot หายจากแผนผัง แต่ booking เดิมยังอยู่และยังนับโควตาของผู้ค้า
-- **Backend จำกัด 100 requests ต่อ 10 นาทีต่อ IP:** ตอน deploy ทุก request ออกจาก server ของ Vercel ถ้าซ้อม demo หลายรอบติดกันอาจโดนบล็อกชั่วคราว ให้เว้นช่วง หรือเพิ่ม limit ใน backend ที่ deploy เอง
+- **Backend จำกัด 100 requests ต่อ 10 นาทีต่อ IP:** หลัง deploy ทุก request ออกจาก server เดียวกัน เว็บจึงลดการยิงเอง: server เก็บข้อมูล spot ไว้ 1 นาทีแล้วใช้ร่วมกันทุกคน, browser เก็บผลไว้ (spot 5 นาที, booking 1 นาที) และล้างทันทีเมื่อมีการจอง/แก้/ลบหรือ login/logout ทั้ง Presentation Journey ใช้ราว 40 requests
 
 ## Deploy ขึ้น Vercel
 

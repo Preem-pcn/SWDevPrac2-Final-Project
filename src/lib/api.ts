@@ -9,11 +9,12 @@ export class ApiError extends Error {
 // Client-side calls go through the Next.js proxy route, which attaches the
 // JWT from an httpOnly cookie. The token never reaches browser JavaScript.
 //
-// GET responses are shared for 30 seconds: identical requests in flight reuse one
-// promise (React dev mode runs effects twice) and moving between pages doesn't refetch.
-// Any change (POST/PUT/DELETE) or login/logout clears the cache, so data never goes stale
-// after the user's own actions. The backend allows only a limited number of requests per IP.
-const TTL = 30_000;
+// The backend allows only 100 requests per IP every 10 minutes, so GET responses are reused:
+// identical requests in flight share one promise (React dev mode runs effects twice), and
+// results are kept for a while so moving between pages doesn't refetch. Spots rarely change
+// (5 minutes); bookings are kept for 1 minute. Any change (POST/PUT/DELETE) or login/logout
+// clears everything, so the user's own actions always show up immediately.
+const ttl = (path: string) => (path.startsWith("/spots") ? 300_000 : 60_000);
 const cache = new Map<string, { at: number; promise: Promise<unknown> }>();
 export const clearApiCache = () => cache.clear();
 
@@ -21,7 +22,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const method = init.method ?? "GET";
   if (method === "GET") {
     const hit = cache.get(path);
-    if (hit && Date.now() - hit.at < TTL) return hit.promise as Promise<T>;
+    if (hit && Date.now() - hit.at < ttl(path)) return hit.promise as Promise<T>;
     const promise = request<T>(path, init);
     cache.set(path, { at: Date.now(), promise });
     promise.catch(() => cache.delete(path));

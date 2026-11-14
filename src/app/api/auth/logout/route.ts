@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { backend } from "@/lib/backend";
-import { TOKEN_COOKIE, USER_COOKIE, getSession } from "@/lib/session";
+import { TOKEN_COOKIE, USER_COOKIE } from "@/lib/session";
 
+// Logging out only needs to drop our cookies. The backend's /auth/logout clears a cookie
+// this app never uses, so calling it would only spend one of the limited requests.
 export async function POST() {
-  const session = await getSession();
-  if (session) await backend("/auth/logout", { token: session.token });
   const res = NextResponse.json({ success: true, data: {} });
   res.cookies.delete(TOKEN_COOKIE);
   res.cookies.delete(USER_COOKIE);
