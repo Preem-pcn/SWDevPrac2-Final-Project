@@ -1,0 +1,155 @@
+@import "tailwindcss";
+@import "@fontsource/anuphan/400.css";
+@import "@fontsource/anuphan/500.css";
+@import "@fontsource/anuphan/600.css";
+@import "@fontsource/bricolage-grotesque/700.css";
+@import "@fontsource/bricolage-grotesque/800.css";
+
+@theme {
+  --color-night: #04263d;
+  --color-surface: #0a3552;
+  --color-field: #134d74;
+  --color-brand: #006199;
+  --color-sky: #8acff8;
+  --color-lantern: #ffd444;
+  --color-glow: #f4eb6c;
+  --color-ink: #f3f9fd;
+  --color-muted: #a8c8dc;
+  --color-onlight: #04263d;
+  --color-danger: #ff9b8a;
+  --color-danger-surface: #4b2029;
+  --color-booked: #0e3b5a;
+
+  --font-sans: "Anuphan", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Anuphan", ui-sans-serif, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--color-night);
+    color: var(--color-ink);
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-lantern);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-lantern);
+    color: var(--color-onlight);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+  }
+}
+
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.25;
+  transition: transform 150ms ease, background-color 150ms ease, opacity 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+  &:active {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-sm {
+  padding: 0.5rem 1.125rem;
+  font-size: 0.875rem;
+}
+
+@utility input-base {
+  width: 100%;
+  border-radius: 0.75rem;
+  background: var(--color-field);
+  color: var(--color-ink);
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  border: 2px solid transparent;
+  outline: none;
+  transition: border-color 150ms ease;
+  &::placeholder {
+    color: var(--color-muted);
+  }
+  &:focus {
+    border-color: var(--color-sky);
+  }
+  &[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.rise {
+  animation: rise 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.lantern {
+  transform-origin: 50% -6px;
+  animation: sway 3.6s ease-in-out infinite;
+}
+
+.lantern-glow {
+  animation: flicker 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .lantern,
+  .lantern-glow {
+    animation: none;
+  }
+}
