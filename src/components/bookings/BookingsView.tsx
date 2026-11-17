@@ -62,12 +62,12 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
   const onStatDay = all.filter((b) => dayKey(b.bookingDate) === statDay);
 
   return (
-    <div className="flex flex-col gap-7 px-5 pb-16 pt-6 md:px-10">
+    <div className={`flex flex-col px-5 pb-16 md:px-10 ${view === "calendar" ? "extras-calendarPage gap-5 pt-8" : "gap-7 pt-6"}`}>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="display text-6xl md:text-[80px]">{isAdmin ? "All bookings" : "My bookings"}</h1>
           <p className="text-lg text-muted">
-            {isAdmin
+            {view === "calendar" ? "Drag a booking to another night to move it." : isAdmin
               ? `${all.length} bookings from ${new Set(all.map((b) => b.user?._id)).size} vendors`
               : upcoming.length
                 ? summary

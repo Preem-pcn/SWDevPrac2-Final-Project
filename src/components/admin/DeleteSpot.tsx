@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -6,7 +6,10 @@ import { api } from "@/lib/api";
 import { baht, dayKey, formatDay, todayKey } from "@/lib/date";
 import { useLoad } from "@/lib/hooks";
 import type { Booking, Spot } from "@/lib/types";
-import { ErrorBox, Loading, SummaryRows } from "../ui";
+import { ErrorBox, Loading, Modal, SummaryRows } from "../ui";
+import SpotsAdmin from "./SpotsAdmin";
+import { zoneLetter } from "@/lib/spots";
+import styles from "../extras-styles";
 
 export default function DeleteSpot({ id }: { id: string }) {
   const router = useRouter();
@@ -21,16 +24,20 @@ export default function DeleteSpot({ id }: { id: string }) {
     try { await api(`/spots/${id}`, { method: "DELETE" }); router.push("/admin/spots"); router.refresh(); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not delete this spot."); setBusy(false); }
   };
-  return <div className="px-5 py-8 md:px-10 max-w-4xl mx-auto flex flex-col gap-6">
-    <Link href="/admin/spots" className="text-sky">← Manage spots</Link>
+  return <>
+    <SpotsAdmin />
+    <Modal open onClose={() => { if (!busy) router.push("/admin/spots"); }} width="max-w-[600px]">
+    <div className="flex flex-col gap-5">
     {spots.loading || bookings.loading ? <Loading /> : spots.error ? <ErrorBox>{spots.error}</ErrorBox> : !spot ? <ErrorBox>This spot does not exist or was removed.</ErrorBox> : <>
-      <h1 className="display text-5xl md:text-7xl">Delete spot {spot.spotNumber}?</h1>
-      <p className="text-lg text-muted">Vendors will no longer see this spot on the map or be able to book it. Existing bookings remain in the system.</p>
-      <div className="rounded-[32px] bg-surface p-7"><SummaryRows rows={[["Spot", `${spot.spotNumber} · Zone ${spot.zone}`], ["Size", spot.spotSize], ["Location", spot.locationDescription], ["Rental fee", `${baht(spot.rentalFee)} per night`]]} /></div>
+      <h1 className={`display ${styles.deleteTitle}`}>Delete spot {spot.spotNumber}?</h1>
+      <p className="text-lg text-muted">Vendors will no longer see {spot.spotNumber} on the map. This can’t be undone.</p>
+      <SummaryRows rows={[["Spot", `${spot.spotNumber} · Zone ${zoneLetter(spot.zone)}`], ["Size", spot.spotSize], ["Location", spot.locationDescription], ["Rental fee", `${baht(spot.rentalFee)} per night`]]} />
       {bookings.error && <ErrorBox>Could not check upcoming bookings: {bookings.error}</ErrorBox>}
-      {upcoming.length > 0 && <div className="rounded-2xl bg-danger-surface text-danger p-5">{upcoming.length} upcoming bookings use this spot. They still count toward each vendor’s daily limit. Contact the vendors or move their bookings first.<ul className="mt-3 list-disc pl-5">{upcoming.map((b) => <li key={b._id}><Link href={`/bookings/${b._id}/pass`} className="underline">{formatDay(dayKey(b.bookingDate))} · {b.user?.name ?? "Deleted user"}</Link></li>)}</ul></div>}
+      {upcoming.length > 0 && <div className="rounded-2xl bg-danger-surface text-danger px-4 py-3.5">{upcoming.length} upcoming {upcoming.length === 1 ? "booking uses" : "bookings use"} {spot.spotNumber} ({upcoming.slice(0, 3).map((b) => formatDay(dayKey(b.bookingDate), "short")).join(", ")}). Existing bookings stay in the system; contact the vendors or move them first.</div>}
       {error && <ErrorBox>{error}</ErrorBox>}
-      <div className="flex gap-3"><button disabled={busy || !!bookings.error} onClick={remove} className="btn bg-danger text-onlight">{busy ? "Deleting…" : "Delete spot"}</button><Link href="/admin/spots" className="btn bg-field">Keep spot</Link></div>
+      <div className={styles.deleteActions}><button disabled={busy || !!bookings.error} onClick={remove} className="btn bg-danger text-onlight">{busy ? "Deleting…" : "Delete spot"}</button><Link href="/admin/spots" className="btn bg-field">Keep spot</Link></div>
     </>}
-  </div>;
+    </div>
+    </Modal>
+  </>;
 }

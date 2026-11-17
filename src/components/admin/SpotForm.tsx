@@ -9,6 +9,8 @@ import { useLoad } from "@/lib/hooks";
 import type { Spot } from "@/lib/types";
 import { SpotTile, byNumber } from "../SpotMap";
 import { ErrorBox, Field, Loading } from "../ui";
+import styles from "../extras-styles";
+import { zoneLetter } from "@/lib/spots";
 
 const EMPTY = { spotNumber: "", zone: "", spotSize: "", locationDescription: "", rentalFee: "" };
 
@@ -71,7 +73,7 @@ function Form({ existing, spots, onDone }: { existing?: Spot; spots: Spot[]; onD
   const err = (k: keyof typeof errs) => (touched ? errs[k] : null);
 
   return (
-    <div className="grid gap-6 px-3 pb-6 md:px-6 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[1fr_minmax(0,40%)]">
+    <div className={`grid gap-6 px-3 pb-6 md:px-6 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[1fr_minmax(0,40%)] ${existing ? styles.editPage : ""}`}>
       <form onSubmit={submit} className="flex flex-col justify-center px-3 py-10 md:px-16" noValidate>
         <div className="flex w-full max-w-[560px] flex-col gap-[18px]">
           <h1 className="display text-5xl">{existing ? `Edit spot ${existing.spotNumber}` : "Add a spot"}</h1>
@@ -81,11 +83,11 @@ function Form({ existing, spots, onDone }: { existing?: Spot; spots: Spot[]; onD
               <input className="input-base" value={v.spotNumber} onChange={set("spotNumber")} placeholder="A13" aria-invalid={!!err("spotNumber")} />
             </Field>
             <Field label="Zone" error={err("zone")}>
-              <input className="input-base" list="zones" value={v.zone} onChange={set("zone")} placeholder="A · Food street" aria-invalid={!!err("zone")} />
+              {existing ? <select className="input-base" value={v.zone} onChange={(e) => setV({ ...v, zone: e.target.value })} aria-invalid={!!err("zone")}>{zones.map((z) => <option key={z} value={z}>{z}</option>)}</select> : <input className="input-base" list="zones" value={v.zone} onChange={set("zone")} placeholder="A · Food street" aria-invalid={!!err("zone")} />}
               <datalist id="zones">{zones.map((z) => <option key={z} value={z} />)}</datalist>
             </Field>
           </div>
-          <Field label="Spot size" error={err("spotSize")} help="Width × depth, like 2 x 3 m">
+          <Field label="Spot size" error={err("spotSize")} help={existing ? "Width × depth in metres" : "Width × depth, like 2 x 3 m"}>
             <input className="input-base" value={v.spotSize} onChange={set("spotSize")} aria-invalid={!!err("spotSize")} />
           </Field>
           <Field label="Location description" error={err("locationDescription")}>
@@ -97,6 +99,7 @@ function Form({ existing, spots, onDone }: { existing?: Spot; spots: Spot[]; onD
           <div className="flex flex-wrap gap-3 pt-1">
             <button disabled={busy} className="btn bg-lantern text-onlight hover:bg-glow">{busy ? "Saving…" : existing ? "Save changes" : "Create spot"}</button>
             <Link href="/admin/spots" className="btn bg-field hover:bg-brand">Cancel</Link>
+            {existing && <Link href={`/admin/spots/${existing._id}/delete`} className="btn ml-auto bg-danger text-onlight hover:bg-glow">Delete spot</Link>}
           </div>
         </div>
       </form>
@@ -116,10 +119,10 @@ function Form({ existing, spots, onDone }: { existing?: Spot; spots: Spot[]; onD
         ))}
         {v.zone && (
           <div className="mt-auto flex flex-col gap-2.5 rounded-[28px] bg-night p-5">
-            <p className="text-sm font-medium text-muted">Zone {v.zone} · {zoneMates.length + 1} spots</p>
+            <p className="text-sm font-medium text-muted">Zone {existing ? zoneLetter(v.zone) : v.zone} · {zoneMates.length + 1} spots</p>
             <div className="flex flex-wrap gap-2">
               {[...zoneMates, preview].sort(byNumber).map((s) => (
-                <SpotTile key={s._id} spot={s} size={48} state={s._id === "preview" ? "selected" : "available"} />
+                <SpotTile key={s._id} spot={s} size={existing ? 52 : 48} state={s._id === "preview" ? "selected" : "available"} />
               ))}
             </div>
           </div>

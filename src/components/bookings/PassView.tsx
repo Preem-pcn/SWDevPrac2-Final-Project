@@ -1,12 +1,14 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { api } from "@/lib/api";
-import { baht, dayKey, formatDay, marketOpensAt, todayKey } from "@/lib/date";
+import { dayKey, formatDay, marketOpensAt, todayKey } from "@/lib/date";
 import { useLoad } from "@/lib/hooks";
 import type { Booking } from "@/lib/types";
 import { ErrorBox, Loading } from "../ui";
+import Lanterns from "../Lanterns";
+import styles from "../extras-styles";
 
 export default function PassView({ id }: { id: string }) {
   const booking = useLoad(() => api<Booking>(`/bookings/${id}`), [id]);
@@ -25,7 +27,7 @@ export default function PassView({ id }: { id: string }) {
   }, []);
   useEffect(() => {
     let active = true;
-    if (b) QRCode.toDataURL(`SAENGDAO NIGHT MARKET|BOOKING ${b._id}|SPOT ${b.spot?.spotNumber ?? "Removed"}|NIGHT ${dayKey(b.bookingDate)}|VENDOR ${b.user?.name ?? "Deleted user"}`, { width: 480, margin: 4, errorCorrectionLevel: "M" })
+    if (b) QRCode.toDataURL(`SAENGDAO NIGHT MARKET|BOOKING ${b._id}|SPOT ${b.spot?.spotNumber ?? "Removed"}|NIGHT ${dayKey(b.bookingDate)}|VENDOR ${b.user?.name ?? "Deleted user"}`, { width: 480, margin: 0, errorCorrectionLevel: "M", color: { dark: "#04263d", light: "#f3f9fd" } })
       .then((url) => { if (active) setQr(url); })
       .catch(() => { if (active) setError("Could not generate QR code. Please reload."); });
     return () => { active = false; };
@@ -36,15 +38,15 @@ export default function PassView({ id }: { id: string }) {
     try {
       await document.fonts.ready;
       const { toPng } = await import("html-to-image");
-      const png = await toPng(ticket.current, { pixelRatio: 3, backgroundColor: "#04263d" });
+      const png = await toPng(ticket.current, { pixelRatio: 3, backgroundColor: "#006199" });
       const name = `saengdao-${b.spot?.spotNumber ?? "spot"}-${dayKey(b.bookingDate)}`;
       if (format === "png") {
         const link = document.createElement("a"); link.href = png; link.download = `${name}.png`; link.click();
       } else {
         const { jsPDF } = await import("jspdf");
         const { offsetWidth: w, offsetHeight: h } = ticket.current;
-        const pdf = new jsPDF({ unit: "px", format: [w, h], orientation: h >= w ? "portrait" : "landscape", hotfixes: ["px_scaling"] });
-        pdf.addImage(png, "PNG", 0, 0, w, h); pdf.save(`${name}.pdf`);
+        const pdf = new jsPDF({ compress: true, unit: "px", format: [w, h], orientation: h >= w ? "portrait" : "landscape", hotfixes: ["px_scaling"] });
+        pdf.addImage(png, "PNG", 0, 0, w, h, undefined, "FAST"); pdf.save(`${name}.pdf`);
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Could not download pass."); }
     finally { setBusy(false); }
@@ -54,44 +56,57 @@ export default function PassView({ id }: { id: string }) {
   const day = dayKey(b.bookingDate);
   const seconds = now === null ? null : Math.max(0, Math.floor((marketOpensAt(day).getTime() - now) / 1000));
   const otherPasses = (others.data ?? []).filter((x) => x._id !== id && x.user?._id === b.user?._id && dayKey(x.bookingDate) >= todayKey());
-  return <div className="px-5 py-6 md:px-10 pb-16">
-    <Link href="/bookings" className="text-sky">← My bookings</Link>
-    <h1 className="display text-5xl md:text-7xl mt-5 mb-8">Your market pass</h1>
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,540px)_1fr]">
-      <div ref={ticket} className="overflow-hidden rounded-[32px]">
-        <div className="bg-lantern text-onlight p-8 md:p-10">
-          <p className="font-semibold tracking-widest">SAENGDAO · NIGHT MARKET</p>
-          <p className="mt-8 text-sm uppercase tracking-widest">Vendor entry pass · Spot</p>
-          <p className="display break-all text-[clamp(5rem,15vw,9rem)] my-2">{b.spot?.spotNumber ?? "—"}</p>
-          <p className="text-xl font-semibold">Zone {b.spot?.zone ?? "—"} · {b.spot?.spotSize ?? "—"}</p>
+  return (
+    <div className={styles.passPage}>
+      <section className={styles.passStage} aria-label="Vendor ticket">
+        <Lanterns className={styles.lanterns} depth={90} />
+        <div ref={ticket} className={styles.ticket}>
+          <div className={styles.ticketTop}>
+            <div className={styles.ticketBrand}><strong>Saengdao Night Market</strong><span>Vendor pass</span></div>
+            <p className={`display ${styles.ticketNumber}`}>{b.spot?.spotNumber ?? "—"}</p>
+            <p className={styles.ticketZone}>Zone {b.spot?.zone ?? "—"} · {b.spot?.spotSize ?? "—"}</p>
+          </div>
+          <div className={styles.perforation}><span /></div>
+          <div className={styles.ticketBottom}>
+            <dl className={styles.ticketDetails}>
+              {[["Night", formatDay(day).replace(",", "")], ["Opens", "17:00"], ["Vendor", b.user?.name ?? "Deleted user"], ["Selling", b.productType]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            </dl>
+            {b.spot?.isActive === false && <p className="text-danger-surface mt-3">Spot removed. Contact the market before arriving.</p>}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {qr ? <img src={qr} alt="Scannable QR code containing booking details" width={184} height={184} className={styles.qr} /> : <p className="py-10 text-center">Generating QR code…</p>}
+            <p className={styles.ticketFooter}>Booking {b._id} · show this at the gate</p>
+          </div>
         </div>
-        <div className="relative bg-surface px-8 md:px-10">
-          <div className="border-t-2 border-dashed border-muted" />
-          <span className="absolute -left-4 -top-4 size-8 rounded-full bg-night" />
-          <span className="absolute -right-4 -top-4 size-8 rounded-full bg-night" />
-        </div>
-        <div className="bg-surface p-8 md:p-10 flex flex-col gap-5">
-          <p className="display text-3xl">{formatDay(day)}</p><p className="text-sky">Market opens 17:00 · Bangkok time</p>
-          {[["Vendor", b.user?.name ?? "Deleted user"], ["Product", b.productType], ["Location", b.spot?.locationDescription ?? "Spot removed"], ["Rental fee", b.spot ? `${baht(b.spot.rentalFee)} / night` : "—"]].map(([label, value]) => <div key={label}><p className="text-sm text-muted">{label}</p><p className="font-semibold break-words">{value}</p></div>)}
-          {b.spot?.isActive === false && <p className="text-danger">This spot was removed. Contact the market before arriving.</p>}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {qr ? <img src={qr} alt="Scannable QR code containing booking details" width={240} height={240} className="self-center rounded-xl" /> : <p>Generating QR code…</p>}
-          <p className="text-center text-xs text-muted break-all">Booking {b._id}</p>
-        </div>
-      </div>
-      <aside className="flex flex-col gap-6 lg:pt-4">
-        <div className="rounded-[32px] bg-surface p-7">
-          <p className="text-muted">{day < todayKey() ? "This market night has passed" : seconds === 0 ? "Market opening time has arrived" : "Until the market opens"}</p>
-          <p className="display text-4xl mt-4 tabular-nums">{seconds === null ? "Loading…" : seconds === 0 ? "17:00" : `${Math.floor(seconds / 86400)}d ${String(Math.floor(seconds / 3600) % 24).padStart(2, "0")}h ${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}m ${String(seconds % 60).padStart(2, "0")}s`}</p>
-          <p className="text-muted mt-4">Show this pass at the entrance. Save a copy for offline access.</p>
+      </section>
+      <section className={styles.passInfo}>
+        <h1 className={`display ${styles.passTitle}`}>Your vendor pass</h1>
+        <p className={styles.intro}>Show it at the market office when you arrive. Download it now so it works without signal.</p>
+        <div className={styles.countdown}>
+          <p>{day < todayKey() ? "This market night has passed" : seconds === 0 ? "Market opening time has arrived" : "Your stall opens in"}</p>
+          <div className={styles.countdownUnits}>
+            {[[seconds === null ? "—" : Math.floor(seconds / 86400), "days"], [seconds === null ? "—" : Math.floor(seconds / 3600) % 24, "hours"], [seconds === null ? "—" : Math.floor(seconds / 60) % 60, "minutes"]].map(([value, label]) => <span key={label}><strong className="display tabular-nums">{value}</strong><span>{label}</span></span>)}
+          </div>
         </div>
         {error && <ErrorBox>{error}</ErrorBox>}
-        <div className="flex flex-wrap gap-3"><button disabled={busy || !qr} onClick={() => download("png")} className="btn bg-lantern text-onlight">{busy ? "Preparing…" : "Download PNG"}</button><button disabled={busy || !qr} onClick={() => download("pdf")} className="btn bg-field">Download PDF</button></div>
-        <h2 className="display text-2xl mt-3">Your other passes</h2>
-        {others.error && <ErrorBox>{others.error}</ErrorBox>}
-        {otherPasses.map((x) => <Link key={x._id} href={`/bookings/${x._id}/pass`} className="rounded-2xl bg-surface p-5 flex justify-between gap-3"><span className="font-semibold">{x.spot?.spotNumber ?? "Removed spot"}</span><span>{formatDay(dayKey(x.bookingDate), "short")} →</span></Link>)}
-        {!others.loading && !otherPasses.length && <p className="text-muted">No other upcoming passes.</p>}
-      </aside>
+        <div className={styles.passActions}>
+          <button disabled={busy || !qr} onClick={() => download("png")} className="btn bg-lantern text-onlight hover:bg-glow">{busy ? "Preparing…" : "Download PNG"}</button>
+          <button disabled={busy || !qr} onClick={() => download("pdf")} className="btn bg-field hover:bg-brand">Download PDF</button>
+          <Link href="/bookings" className="btn bg-field hover:bg-brand">Back to My bookings</Link>
+        </div>
+        <ul className={styles.passNotes}>
+          <li>Valid only for spot {b.spot?.spotNumber ?? "—"} on {formatDay(day).replace(",", "")}</li>
+          <li>Set-up opens at 15:00, two hours before the market</li>
+          <li>If you edit this booking, download the new pass</li>
+        </ul>
+        <div className={styles.otherPasses}>
+          <h2 className="display">Your other passes</h2>
+          {others.error && <ErrorBox>{others.error}</ErrorBox>}
+          <div className={styles.otherGrid}>{otherPasses.map((x) => <Link key={x._id} href={`/bookings/${x._id}/pass`} className={styles.otherCard}>
+            <span>{x.spot?.spotNumber ?? "—"}</span><span><strong>{formatDay(dayKey(x.bookingDate), "short")}</strong><small>Zone {x.spot?.zone?.split(" · ")[0] ?? "—"}</small></span>
+          </Link>)}</div>
+          {!others.loading && !otherPasses.length && <p className="text-muted">No other upcoming passes.</p>}
+        </div>
+      </section>
     </div>
-  </div>;
+  );
 }
