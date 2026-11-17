@@ -141,3 +141,11 @@
 
 .extras-editPage aside button[aria-pressed="true"] { box-shadow:none; }
 .extras-deleteActions .btn { padding:16px 28px; }
+
+/* Admin calendar: booking pills and destination cells use different shapes. */
+.extras-dayLegend { padding-top:18px; border-top:1px solid var(--color-field); }
+.extras-dayLegend > span { width:32px; height:32px; border-radius:8px; border:2px solid var(--color-sky); }
+.extras-dayLegend > span.bg-danger { border-color:var(--color-danger); background:var(--color-danger-surface); }
+.extras-dayOpen { cursor:pointer; min-width:24px; text-align:left; text-decoration:underline; text-underline-offset:3px; }
+.extras-dayMore { display:block; width:100%; text-align:left; font-size:12px; color:var(--color-sky); cursor:pointer; margin-top:4px; }
+.extras-passInfo dl { overflow-wrap:anywhere; }

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { baht, dayKey, formatDay, todayKey } from "@/lib/date";
 import type { Booking, Spot } from "@/lib/types";
+import { useBookingClock } from "@/lib/hooks";
+import { bookingIsLocked, bookingDayHasPassed, bookingLockMessage } from "@/lib/booking-policy";
 import Rules from "../Rules";
 import { byNumber } from "../SpotMap";
 import { ErrorBox, Field, Modal, SummaryRows } from "../ui";
@@ -46,6 +48,8 @@ function EditForm({
   onClose: () => void;
   onSaved: (b: Booking) => void;
 }) {
+  const now = useBookingClock();
+  const locked = !canSeeOthers && (now === null || bookingIsLocked(booking.bookingDate, now));
   const [spotId, setSpotId] = useState(booking.spot?._id ?? "");
   const [date, setDate] = useState(dayKey(booking.bookingDate));
   const [product, setProduct] = useState(booking.productType);
@@ -67,6 +71,7 @@ function EditForm({
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSeeOthers && bookingIsLocked(booking.bookingDate)) { setError(bookingLockMessage(booking.bookingDate)); return; }
     setBusy(true);
     setError(null);
     try {
@@ -89,14 +94,15 @@ function EditForm({
           </p>
         )}
       </div>
-      {error && <ErrorBox>{error}</ErrorBox>}
+      {locked && booking && !bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && <ErrorBox>{bookingLockMessage(booking.bookingDate)}</ErrorBox>}
+      {error && booking && !bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && <ErrorBox>{error}</ErrorBox>}
       <div className="grid gap-7 md:grid-cols-[240px_1fr]">
         <div className="flex flex-col gap-2 rounded-[28px] bg-brand p-7">
           <p className="display text-[96px] leading-[0.9]">{spot?.spotNumber ?? "—"}</p>
           <p className="font-semibold">Zone {spot?.zone}</p>
           <p>{spot ? `${baht(spot.rentalFee)} / night` : ""}</p>
           <div className="mt-auto pt-6">
-            <Rules rules={rules} />
+            {!bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && <Rules rules={rules} />}
           </div>
         </div>
         <div className="flex flex-col gap-4">
@@ -115,7 +121,7 @@ function EditForm({
           <Field
             label="Night"
             help={date !== dayKey(booking.bookingDate) ? `Changed from ${formatDay(dayKey(booking.bookingDate))}` : "Today or any later night"}
-            error={date < todayKey() ? "Pick today or a later night" : null}
+            error={!bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && date < todayKey() ? "Pick today or a later night" : null}
           >
             <input type="date" className="input-base" min={todayKey()} value={date} onChange={(e) => setDate(e.target.value)} aria-invalid={date < todayKey()} />
           </Field>
@@ -132,7 +138,7 @@ function EditForm({
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <button disabled={busy || !changed || !product.trim()} className="btn bg-lantern text-onlight hover:bg-glow">
+        <button disabled={locked || busy || !changed || !product.trim()} className="btn bg-lantern text-onlight hover:bg-glow">
           {busy ? "Saving…" : "Save changes"}
         </button>
         <button type="button" onClick={onClose} className="btn bg-field hover:bg-brand">
@@ -156,8 +162,11 @@ export function DeleteBookingModal({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useBookingClock();
+  const locked = !showVendor && !!booking && (now === null || bookingIsLocked(booking.bookingDate, now));
   const remove = async () => {
     if (!booking) return;
+    if (!showVendor && bookingIsLocked(booking.bookingDate)) { setError(bookingLockMessage(booking.bookingDate)); return; }
     setBusy(true);
     setError(null);
     try {
@@ -183,10 +192,11 @@ export function DeleteBookingModal({
       <div className="flex flex-col gap-5">
         <h2 className="display text-5xl">Delete this booking?</h2>
         <p className="text-lg text-muted">The spot will be released for other vendors. This can’t be undone.</p>
-        {error && <ErrorBox>{error}</ErrorBox>}
+        {error && booking && !bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && <ErrorBox>{error}</ErrorBox>}
+        {locked && booking && !bookingDayHasPassed(booking.bookingDate, now ?? Number.POSITIVE_INFINITY) && <ErrorBox>{bookingLockMessage(booking.bookingDate)}</ErrorBox>}
         <SummaryRows rows={rows} />
         <div className="flex flex-wrap gap-3">
-          <button onClick={remove} disabled={busy} className="btn bg-danger text-onlight">
+          <button onClick={remove} disabled={locked || busy} className="btn bg-danger text-onlight">
             {busy ? "Deleting…" : "Delete booking"}
           </button>
           <button onClick={onClose} className="btn bg-field hover:bg-brand">

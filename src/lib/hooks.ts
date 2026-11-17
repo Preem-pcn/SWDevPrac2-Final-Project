@@ -33,3 +33,16 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []) {
 
   return { data, error, loading, reload, setData };
 }
+
+// Refresh at the cutoff even if the page or a confirmation dialog stays open.
+export function useBookingClock() {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = setInterval(tick, 1000);
+    window.addEventListener("focus", tick);
+    return () => { clearInterval(timer); window.removeEventListener("focus", tick); };
+  }, []);
+  return now;
+}
