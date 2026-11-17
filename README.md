@@ -39,24 +39,33 @@ git clone https://github.com/SWDevPrac2-69-1/PJ05-MarketVendorBook.git
 cd PJ05-MarketVendorBook
 npm ci
 # ใส่ MONGO_URI (MongoDB Atlas) ใน config/config.env
-npm run dev          # http://localhost:5000, API docs ที่ /api-docs
+npm run dev          # http://localhost:<PORT>, API docs ที่ /api-docs
 ```
 
 ### 2. Frontend
 
 ```bash
 npm install
-cp .env.example .env.local     # BACKEND_URL=http://localhost:5000
-npm run seed                   # สร้างบัญชีตัวอย่าง + 36 spots (รันซ้ำได้ ไม่สร้างซ้ำ)
+cp .env.example .env.local     # BACKEND_URL=http://localhost:5050
+npm run seed                   # ใส่ข้อมูลตัวอย่าง (รันซ้ำได้ ไม่สร้างซ้ำ)
 npm run dev                    # http://localhost:3000
 ```
 
-บัญชีที่ `npm run seed` สร้างให้:
+> บน Mac พอร์ต 5000 ถูก AirPlay Receiver ใช้อยู่ ให้ตั้ง `PORT=5050` ใน `config/config.env` ของ backend
 
-| Role | Email | Password |
-|---|---|---|
-| admin | admin@saengdao.market | admin123 |
-| member | somchai@example.com | member123 |
+### ข้อมูลที่ `npm run seed` สร้าง
+
+| ข้อมูล | รายละเอียด |
+|---|---|
+| Admin | `admin@saengdao.market` / `admin123` |
+| Member | `somchai@example.com` / `member123` (Somchai Prasert) |
+| Spots (6) | Zone A · Food street: A1, A2 / Zone B · Clothing and crafts: B1, B2 / Zone C · Drinks and desserts: C1, C2 |
+| Booking (1) | Somchai จอง A1 วันที่ 16 พ.ย. 2026 ขาย Grilled food (เป็นคืนที่ผ่านไปแล้ว) |
+
+- บัญชีและ spot สร้างผ่าน API ของ backend ตาม `BACKEND_URL`
+- backend ไม่ยอมให้สร้าง booking ย้อนหลังผ่าน API ตัว seed จึงเขียน booking วันที่ 16 ลง MongoDB ตรง ๆ โดยใช้ `MONGO_URI` จาก `../PJ05-MarketVendorBook/config/config.env` (หรือตั้ง `MONGO_URI` ใน `.env.local`) ถ้าหา `MONGO_URI` ไม่เจอจะข้ามขั้นนี้
+- เปลี่ยนวันของ booking ได้ด้วย `PAST_NIGHT=2026-11-15 npm run seed`
+- ถ้าอยากเริ่มใหม่จากศูนย์ ลบ database ใน MongoDB Atlas แล้วรัน seed อีกครั้ง
 
 ## โครงสร้าง
 
@@ -94,8 +103,8 @@ scripts/seed.mjs            เตรียมข้อมูลตัวอย�
 |---|---|
 | 1–2 ลงทะเบียน (ลองกรอกผิดก่อน) + login | /register, /login |
 | 3 ดู spot | /spots |
-| 4 สร้าง booking + ลองผิดเงื่อนไข | /spots → Book → ลองจอง A3 ของคนอื่น / วันย้อนหลัง / spot ที่ 4 ในคืนเดียว |
-| 5–7 ดู / แก้ / ลบ booking ของตัวเอง | /bookings |
+| 4 สร้าง booking + ลองผิดเงื่อนไข | /spots → Book → ลองจอง spot เดิมคืนเดิมซ้ำ / ใส่วันย้อนหลัง / จอง spot ที่ 4 ในคืนเดียว |
+| 5–7 ดู / แก้ / ลบ booking ของตัวเอง | /bookings (Somchai มี booking วันที่ 16 ที่ผ่านไปแล้ว แก้ไม่ได้แต่ลบได้) |
 | 8 logout | ปุ่ม Log out |
 | 9–12 admin login, ดู / แก้ / ลบ booking ใดก็ได้ | /admin → All bookings |
 | 13 admin สร้าง spot | Manage spots → Add spot |
