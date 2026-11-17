@@ -130,8 +130,8 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
           <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
             {[
               [String(onStatDay.length), `bookings on ${formatDay(statDay, "short")}`, true],
-              [String((spots.data?.length ?? 0) - onStatDay.filter((b) => b.spot?.isActive !== false).length), `of ${spots.data?.length ?? 0} spots still free`, false],
-              [String(new Set(onStatDay.map((b) => b.user?._id)).size), "vendors selling that night", false],
+              [String(Math.max(0, (spots.data ?? []).filter((s) => s.isActive !== false).length - new Set(onStatDay.filter((b) => spots.data?.some((s) => s.isActive !== false && s._id === b.spot?._id)).map((b) => b.spot!._id)).size)), `of ${(spots.data ?? []).filter((s) => s.isActive !== false).length} spots still free`, false],
+              [String(new Set(onStatDay.flatMap((b) => b.user ? [b.user._id] : [])).size), "vendors selling that night", false],
               [baht(onStatDay.reduce((s, b) => s + (b.spot?.rentalFee ?? 0), 0)), "rent due that night", false],
             ].map(([v, l, hi]) => (
               <div key={l as string} className={`rounded-[32px] px-7 py-6 ${hi ? "bg-lantern text-onlight" : "bg-surface"}`}>
@@ -255,14 +255,16 @@ function NextNights({ bookings }: { bookings: Booking[] }) {
 }
 
 export function ZoneBars({ spots, bookings, day }: { spots: Spot[]; bookings: Booking[]; day: string }) {
-  const zones = [...new Set(spots.map((s) => s.zone))].sort();
+  const activeSpots = spots.filter((s) => s.isActive !== false);
+  const zones = [...new Set(activeSpots.map((s) => s.zone))].sort();
   return (
     <section className="flex flex-col gap-4">
       <h2 className="display text-2xl">Zones on {formatDay(day, "short")}</h2>
       <div className="grid gap-5 md:grid-cols-3">
         {zones.map((z) => {
-          const total = spots.filter((s) => s.zone === z).length;
-          const booked = bookings.filter((b) => b.spot?.zone === z && b.spot?.isActive !== false).length;
+          const zoneSpots = activeSpots.filter((s) => s.zone === z);
+          const total = zoneSpots.length;
+          const booked = new Set(bookings.filter((b) => zoneSpots.some((s) => s._id === b.spot?._id)).map((b) => b.spot!._id)).size;
           return (
             <div key={z} className="flex flex-col gap-3 rounded-[28px] bg-surface px-6 py-5">
               <div className="flex justify-between gap-4">

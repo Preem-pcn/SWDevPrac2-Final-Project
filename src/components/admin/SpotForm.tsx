@@ -17,6 +17,7 @@ export default function SpotForm({ id }: { id?: string }) {
   const spots = useLoad(() => api<Spot[]>("/spots"));
   const existing = id ? spots.data?.find((s) => s._id === id) : undefined;
   if (spots.loading && !spots.data) return <div className="px-10"><Loading /></div>;
+  if (spots.error) return <div className="px-10 pt-6"><ErrorBox>{spots.error}</ErrorBox></div>;
   if (id && !existing) return <div className="px-10 pt-6"><ErrorBox>This spot doesn’t exist or was removed.</ErrorBox></div>;
   return <Form key={id ?? "new"} existing={existing} spots={spots.data ?? []} onDone={() => { router.push("/admin/spots"); router.refresh(); }} />;
 }
