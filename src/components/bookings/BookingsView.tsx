@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { addDays, baht, dayKey, formatDay, todayKey } from "@/lib/date";
-import { useLoad } from "@/lib/hooks";
+import { useBookingClock, useLoad } from "@/lib/hooks";
 import type { Booking, Spot } from "@/lib/types";
 import { useSession } from "../session";
 import { ErrorBox, Loading, Notice } from "../ui";
+import { bookingIsLocked, bookingDayHasPassed, bookingLockMessage } from "@/lib/booking-policy";
 import Calendar from "./Calendar";
 import { DeleteBookingModal, EditBookingModal } from "./Modals";
 
 export default function BookingsView({ view, created }: { view: "list" | "calendar"; created?: string }) {
+  const now = useBookingClock();
   const user = useSession();
   const router = useRouter();
   const isAdmin = user?.role === "admin";
@@ -23,13 +25,14 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [filterDate, setFilterDate] = useState("");
   const [filterZone, setFilterZone] = useState("");
+  const [spotStatus, setSpotStatus] = useState("all");
 
   const all = useMemo(() => bookings.data ?? [], [bookings.data]);
   const today = todayKey();
   const createdBooking = created ? all.find((b) => b._id === created) : undefined;
   const zones = useMemo(() => [...new Set(all.map((b) => b.spot?.zone).filter(Boolean) as string[])].sort(), [all]);
   const rows = all.filter(
-    (b) => (!filterDate || dayKey(b.bookingDate) === filterDate) && (!filterZone || b.spot?.zone === filterZone),
+    (b) => (!filterDate || dayKey(b.bookingDate) === filterDate) && (!filterZone || b.spot?.zone === filterZone) && (!isAdmin || spotStatus === "all" || (spotStatus === "active" ? !!b.spot && b.spot.isActive !== false : !b.spot || b.spot.isActive === false)),
   );
 
   const setView = (v: "list" | "calendar") => router.replace(v === "list" ? "/bookings" : "/bookings?view=calendar", { scroll: false });
@@ -38,6 +41,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
 
   const move = async (b: Booking, to: string) => {
     setMessage(null);
+    if (!isAdmin && bookingIsLocked(b.bookingDate)) { setMessage({ kind: "error", text: bookingLockMessage(b.bookingDate) }); return; }
     if (to < today) {
       setMessage({ kind: "error", text: `${formatDay(to)} has passed, so ${b.spot?.spotNumber} stayed on ${formatDay(dayKey(b.bookingDate))}.` });
       return;
@@ -62,12 +66,12 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
   const onStatDay = all.filter((b) => dayKey(b.bookingDate) === statDay);
 
   return (
-    <div className="flex flex-col gap-7 px-5 pb-16 pt-6 md:px-10">
+    <div className={`flex flex-col px-5 pb-16 md:px-10 ${view === "calendar" ? "extras-calendarPage gap-5 pt-8" : "gap-7 pt-6"}`}>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="display text-6xl md:text-[80px]">{isAdmin ? "All bookings" : "My bookings"}</h1>
           <p className="text-lg text-muted">
-            {isAdmin
+            {view === "calendar" ? "Drag a booking to another night to move it." : isAdmin
               ? `${all.length} bookings from ${new Set(all.map((b) => b.user?._id)).size} vendors`
               : upcoming.length
                 ? summary
@@ -96,7 +100,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
         </div>
       </div>
 
-      {createdBooking && !message && (
+      {createdBooking && !bookingDayHasPassed(createdBooking.bookingDate) && !message && (
         <Notice>
           Booking confirmed: {createdBooking.spot?.spotNumber} on {formatDay(dayKey(createdBooking.bookingDate))}.{" "}
           <Link href={`/bookings/${createdBooking._id}/pass`} className="underline">
@@ -107,6 +111,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
       {message && (message.kind === "ok" ? <Notice>{message.text}</Notice> : <ErrorBox>{message.text}</ErrorBox>)}
       {bookings.error && <ErrorBox>{bookings.error}</ErrorBox>}
 
+      {isAdmin && <label className="flex w-[260px] flex-col gap-2"><span className="text-sm font-medium">Spot status</span><select className="input-base" value={spotStatus} onChange={(e) => setSpotStatus(e.target.value)}><option value="all">All</option><option value="active">Available spot</option><option value="removed">Removed spot</option></select></label>}
       {isAdmin && view === "list" && (
         <>
           <div className="flex flex-wrap items-end gap-3">
@@ -121,8 +126,8 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
                 {zones.map((z) => <option key={z} value={z}>{z}</option>)}
               </select>
             </label>
-            {(filterDate || filterZone) && (
-              <button onClick={() => { setFilterDate(""); setFilterZone(""); }} className="btn btn-sm bg-field hover:bg-brand">
+            {(filterDate || filterZone || spotStatus !== "all") && (
+              <button onClick={() => { setFilterDate(""); setFilterZone(""); setSpotStatus("all"); }} className="btn btn-sm bg-field hover:bg-brand">
                 Clear filters
               </button>
             )}
@@ -130,8 +135,8 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
           <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
             {[
               [String(onStatDay.length), `bookings on ${formatDay(statDay, "short")}`, true],
-              [String((spots.data?.length ?? 0) - onStatDay.filter((b) => b.spot?.isActive !== false).length), `of ${spots.data?.length ?? 0} spots still free`, false],
-              [String(new Set(onStatDay.map((b) => b.user?._id)).size), "vendors selling that night", false],
+              [String(Math.max(0, (spots.data ?? []).filter((s) => s.isActive !== false).length - new Set(onStatDay.filter((b) => spots.data?.some((s) => s.isActive !== false && s._id === b.spot?._id)).map((b) => b.spot!._id)).size)), `of ${(spots.data ?? []).filter((s) => s.isActive !== false).length} spots still free`, false],
+              [String(new Set(onStatDay.flatMap((b) => b.user ? [b.user._id] : [])).size), "vendors selling that night", false],
               [baht(onStatDay.reduce((s, b) => s + (b.spot?.rentalFee ?? 0), 0)), "rent due that night", false],
             ].map(([v, l, hi]) => (
               <div key={l as string} className={`rounded-[32px] px-7 py-6 ${hi ? "bg-lantern text-onlight" : "bg-surface"}`}>
@@ -146,7 +151,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
       {bookings.loading && !bookings.data ? (
         <Loading label="Loading bookings…" />
       ) : bookings.error ? null : view === "calendar" ? (
-        <Calendar bookings={all} showVendor={isAdmin} onMove={move} />
+        <Calendar bookings={isAdmin ? rows : all} knownBookings={all} showVendor={isAdmin} onMove={move} />
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-start gap-4 rounded-[32px] bg-surface p-10">
           <p className="display text-3xl">{all.length ? "No bookings match these filters." : isAdmin ? "No bookings yet." : "You haven’t booked a spot yet."}</p>
@@ -169,6 +174,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
             <tbody>
               {rows.map((b, i) => {
                 const past = dayKey(b.bookingDate) < today;
+                const locked = !isAdmin && (now === null || bookingIsLocked(b.bookingDate, now));
                 return (
                   <tr key={b._id} className={`[&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl ${i % 2 ? "" : "bg-surface"} ${past ? "text-muted" : ""} ${b._id === created ? "bg-brand" : ""}`}>
                     {isAdmin && (
@@ -177,7 +183,7 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
                         <span className="block text-sm font-normal text-muted">{b.user?.tel}</span>
                       </td>
                     )}
-                    <td className="px-4 py-3 font-semibold">{b.spot?.spotNumber ?? "—"}{b.spot?.isActive === false && <span className="block text-xs font-normal text-danger">spot removed</span>}</td>
+                    <td className="px-4 py-3 font-semibold">{b.spot?.spotNumber ?? "—"}{!bookingDayHasPassed(b.bookingDate, now ?? Number.POSITIVE_INFINITY) && (!b.spot || b.spot.isActive === false) && <span className="block text-xs font-normal text-danger">Spot removed · Pass unavailable. Change the spot or contact an admin.</span>}</td>
                     <td className="px-4 py-3">{b.spot?.zone ?? "—"}</td>
                     <td className="px-4 py-3">{formatDay(dayKey(b.bookingDate))}{past && <span className="block text-xs">past</span>}</td>
                     <td className="px-4 py-3">{b.productType}</td>
@@ -186,10 +192,11 @@ export default function BookingsView({ view, created }: { view: "list" | "calend
                       <div className="flex gap-2">
                         <Link href={`/bookings/${b._id}/pass`} className="btn btn-sm bg-lantern text-onlight hover:bg-glow">Pass</Link>
                         {!past && (
-                          <button onClick={() => setEditing(b)} className="btn btn-sm bg-field hover:bg-brand">Edit</button>
+                          <button disabled={locked} onClick={() => setEditing(b)} className="btn btn-sm bg-field hover:bg-brand">Edit</button>
                         )}
-                        <button onClick={() => setDeleting(b)} className="btn btn-sm bg-danger-surface text-danger hover:bg-danger hover:text-onlight">Delete</button>
+                        <button disabled={locked} onClick={() => setDeleting(b)} className="btn btn-sm bg-danger-surface text-danger hover:bg-danger hover:text-onlight">Delete</button>
                       </div>
+                      {locked && now !== null && !bookingDayHasPassed(b.bookingDate, now) && <p className="mt-2 max-w-xs text-sm text-danger">After 17:00, contact an admin to edit or cancel this booking.</p>}
                     </td>
                   </tr>
                 );
@@ -255,14 +262,16 @@ function NextNights({ bookings }: { bookings: Booking[] }) {
 }
 
 export function ZoneBars({ spots, bookings, day }: { spots: Spot[]; bookings: Booking[]; day: string }) {
-  const zones = [...new Set(spots.map((s) => s.zone))].sort();
+  const activeSpots = spots.filter((s) => s.isActive !== false);
+  const zones = [...new Set(activeSpots.map((s) => s.zone))].sort();
   return (
     <section className="flex flex-col gap-4">
       <h2 className="display text-2xl">Zones on {formatDay(day, "short")}</h2>
       <div className="grid gap-5 md:grid-cols-3">
         {zones.map((z) => {
-          const total = spots.filter((s) => s.zone === z).length;
-          const booked = bookings.filter((b) => b.spot?.zone === z && b.spot?.isActive !== false).length;
+          const zoneSpots = activeSpots.filter((s) => s.zone === z);
+          const total = zoneSpots.length;
+          const booked = new Set(bookings.filter((b) => zoneSpots.some((s) => s._id === b.spot?._id)).map((b) => b.spot!._id)).size;
           return (
             <div key={z} className="flex flex-col gap-3 rounded-[28px] bg-surface px-6 py-5">
               <div className="flex justify-between gap-4">

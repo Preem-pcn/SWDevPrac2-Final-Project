@@ -42,12 +42,12 @@ export default function Nav() {
 
   return (
     <header className="sticky top-0 z-40 bg-night/95 backdrop-blur-none">
-      <nav className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-6 px-5 md:px-10">
-        <div className="flex items-center gap-6 md:gap-12">
+      <nav className="mx-auto grid min-h-20 max-w-[1440px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-4 px-5 py-4 md:flex md:h-20 md:justify-between md:gap-6 md:px-10 md:py-0">
+        <div className="contents md:flex md:items-center md:gap-12">
           <Link href="/" className="display text-2xl text-lantern md:text-3xl">
             Saengdao
           </Link>
-          <div className="flex items-center gap-4 md:gap-8">
+          <div className="col-span-2 row-start-2 flex items-center gap-4 md:gap-8">
             {items.map((l) => (
               <Link
                 key={l.href}
@@ -61,7 +61,7 @@ export default function Nav() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3 md:gap-5">
+        <div className="col-start-2 row-start-1 flex items-center gap-3 md:gap-5">
           {user ? (
             <>
               <span className="hidden text-muted md:inline">

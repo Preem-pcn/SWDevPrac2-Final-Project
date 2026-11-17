@@ -1,8 +1,8 @@
 // A string of lanterns hanging on a curve, drawn for the night market.
-export default function Lanterns({ count = 9, className = "" }: { count?: number; className?: string }) {
+export default function Lanterns({ count = 9, className = "", depth = 120 }: { count?: number; className?: string; depth?: number }) {
   const w = 600;
   const p0 = [40, 20];
-  const p1 = [w / 2, 120];
+  const p1 = [w / 2, depth];
   const p2 = [w - 40, 20];
   const at = (t: number, i: number) => (1 - t) ** 2 * p0[i] + 2 * (1 - t) * t * p1[i] + t * t * p2[i];
   return (

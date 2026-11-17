@@ -1,44 +1,22 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { baht, dayKey, formatDay, todayKey } from "@/lib/date";
+import { baht, dayKey, todayKey } from "@/lib/date";
 import { useLoad } from "@/lib/hooks";
 import type { Booking, Spot } from "@/lib/types";
 import { byNumber } from "../SpotMap";
-import { ErrorBox, Loading, Modal, Notice, SummaryRows } from "../ui";
+import { ErrorBox, Loading } from "../ui";
 
 export default function SpotsAdmin() {
   const spots = useLoad(() => api<Spot[]>("/spots"));
   const bookings = useLoad(() => api<Booking[]>("/bookings"));
-  const [deleting, setDeleting] = useState<Spot | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [zone, setZone] = useState("");
   const list = useMemo(() => [...(spots.data ?? [])].sort((a, b) => a.zone.localeCompare(b.zone) || byNumber(a, b)), [spots.data]);
   const zones = [...new Set(list.map((s) => s.zone))];
   const shown = list.filter((s) => !zone || s.zone === zone);
   const upcomingFor = (id: string) => (bookings.data ?? []).filter((b) => b.spot?._id === id && dayKey(b.bookingDate) >= todayKey());
-
-  const remove = async () => {
-    if (!deleting) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/spots/${deleting._id}`, { method: "DELETE" });
-      spots.setData(list.filter((s) => s._id !== deleting._id));
-      setNotice(`Removed spot ${deleting.spotNumber}. Vendors no longer see it on the map.`);
-      setDeleting(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn’t delete the spot");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const upcoming = deleting ? upcomingFor(deleting._id) : [];
 
   return (
     <div className="flex flex-col gap-7 px-5 pb-16 pt-6 md:px-10">
@@ -58,7 +36,7 @@ export default function SpotsAdmin() {
           <Link href="/admin/spots/new" className="btn bg-lantern text-onlight hover:bg-glow">Add spot</Link>
         </div>
       </div>
-      {notice && <Notice>{notice}</Notice>}
+
       {spots.error && <ErrorBox>{spots.error}</ErrorBox>}
       {spots.loading && !spots.data ? (
         <Loading />
@@ -89,7 +67,7 @@ export default function SpotsAdmin() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <Link href={`/admin/spots/${s._id}/edit`} className="btn btn-sm bg-field hover:bg-brand">Edit</Link>
-                      <button onClick={() => { setError(null); setDeleting(s); }} className="btn btn-sm bg-danger-surface text-danger hover:bg-danger hover:text-onlight">Delete</button>
+                      <Link href={`/admin/spots/${s._id}/delete`} className="btn btn-sm bg-danger-surface text-danger hover:bg-danger hover:text-onlight">Delete</Link>
                     </div>
                   </td>
                 </tr>
@@ -99,33 +77,7 @@ export default function SpotsAdmin() {
         </div>
       )}
 
-      <Modal open={!!deleting} onClose={() => setDeleting(null)}>
-        {deleting && (
-          <div className="flex flex-col gap-5">
-            <h2 className="display text-5xl">Delete spot {deleting.spotNumber}?</h2>
-            <p className="text-lg text-muted">Vendors will no longer see {deleting.spotNumber} on the map or be able to book it.</p>
-            {error && <ErrorBox>{error}</ErrorBox>}
-            <SummaryRows
-              rows={[
-                ["Spot", `${deleting.spotNumber} · Zone ${deleting.zone}`],
-                ["Size", deleting.spotSize],
-                ["Location", deleting.locationDescription],
-                ["Rental fee", `${baht(deleting.rentalFee)} per night`],
-              ]}
-            />
-            {upcoming.length > 0 && (
-              <div className="rounded-2xl bg-danger-surface px-4 py-3.5 font-medium text-danger">
-                {upcoming.length} upcoming {upcoming.length === 1 ? "booking uses" : "bookings use"} this spot (
-                {upcoming.slice(0, 3).map((b) => formatDay(dayKey(b.bookingDate), "short")).join(", ")}). They stay in the system and still count toward each vendor’s daily limit, so contact or move them first.
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <button onClick={remove} disabled={busy} className="btn bg-danger text-onlight">{busy ? "Deleting…" : "Delete spot"}</button>
-              <button onClick={() => setDeleting(null)} className="btn bg-field hover:bg-brand">Keep spot</button>
-            </div>
-          </div>
-        )}
-      </Modal>
+
     </div>
   );
 }
