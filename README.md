@@ -1,111 +1,402 @@
-# Saengdao Night Market · Vendor Spot Booking (Frontend)
+# Saengdao Night Market
 
-Frontend ของ SW Dev Prac 2 Project 5: ระบบจองพื้นที่ขายของในตลาดกลางคืน
-ใช้ **Next.js 16 (App Router) + Tailwind CSS 4** ต่อกับ backend ของวิชา
-[PJ05-MarketVendorBook](https://github.com/SWDevPrac2-69-1/PJ05-MarketVendorBook)
+A vendor spot booking application developed for **Software Development Practice II — Project 5: Night Market Vendor Spot Booking**.
 
-ดีไซน์และ UI flow อยู่ใน Figma (หน้า `swdev2`)
+Visitors can explore the market layout and spot details. Members can book spots for a selected night, manage their bookings, and download QR entry passes. Administrators manage spots and bookings and monitor market activity through a dashboard.
 
-## เว็บทำอะไรได้บ้าง
+This repository contains the **Next.js frontend and its server-side API proxy**. The REST API and database logic are maintained in a separate backend repository.
 
-**ทุกคน (ไม่ต้อง login)**
-- หน้า Home: แผนผังแผงทั้งหมด, การ์ดแต่ละ zone (จำนวน spot, ช่วงราคา), วิธีจอง และกฎการจอง
-- หน้า Spots: แผนผัง spot แยกตาม zone, กดช่องเพื่อดูรายละเอียด (หมายเลข, zone, ขนาด, ตำแหน่ง, ค่าเช่า) และตารางรายการ spot
-- สมัครสมาชิก (name, email, tel, role, password) มีตรวจฟอร์มก่อนส่ง และ login / logout
+## Project Links
 
-**Member**
-- เลือกวันในหน้า Spots เพื่อดูว่าตัวเองจองช่องไหนไว้ และใช้โควตาไปกี่ spot ในคืนนั้น
-- จอง spot: เลือก spot, วันที่, ประเภทสินค้า (มีปุ่มตัวเลือกให้กด) ระหว่างกรอกมี checklist กฎ 4 ข้ออัปเดตตามที่เลือก
-- ถ้าจองผิดเงื่อนไข (วันย้อนหลัง, spot ถูกคนอื่นจองแล้ว, เกิน 3 spots ต่อคืน, จอง spot เดิมซ้ำวันเดียวกัน) จะเห็นข้อความ error จาก backend
-- My bookings: ตารางการจองของตัวเอง แก้ไข (spot / วัน / สินค้า) และลบ (มี dialog ยืนยัน) พร้อมแถบ 7 คืนข้างหน้าที่บอกโควตาแต่ละคืน
+| Resource | Link |
+| --- | --- |
+| Live frontend | [Saengdao Night Market](https://sw-dev-prac2-final-project-ten.vercel.app/) |
+| Live backend | [Backend service](https://sw-dev-prac2-final-backend.vercel.app/) |
+| Frontend repository | [Preem-pcn/SWDevPrac2-Final-Project](https://github.com/Preem-pcn/SWDevPrac2-Final-Project) |
+| Backend repository | [Preem-pcn/SWDevPrac2-Final-Backend](https://github.com/Preem-pcn/SWDevPrac2-Final-Backend) |
 
-**Admin**
-- All bookings: เห็นการจองของทุกคน กรองตามวันและ zone มีการ์ดสถิติ (จำนวนจอง, spot ว่าง, จำนวนผู้ค้า, ค่าเช่ารวม) และแถบความเต็มของแต่ละ zone
-- แก้ไขและลบ booking ของใครก็ได้
-- Manage spots: เพิ่ม, แก้ไข, ลบ spot โดยหน้าเพิ่ม/แก้ไขมี preview ว่าผู้ค้าจะเห็นอย่างไร
-- หน้า Spots ของ admin แสดงว่า spot ไหนถูกจองแล้วในคืนที่เลือก และใครจอง
+## How It Works
 
-**Extra (กำลังทำ ดู [TEAM_TASKS.md](TEAM_TASKS.md))**
-- ปฏิทินที่ลากการจองไปวันอื่นได้
-- บัตรผ่านเข้าตลาดพร้อม QR code ดาวน์โหลดเป็น PNG / PDF
-- Admin dashboard
+1. Browse spots on the market map and review their zone, size, location, and rental fee.
+2. Register or log in as a member, choose a spot and booking date, and enter the product type.
+3. Review bookings in List or Calendar view. Edit, cancel, or drag a booking to another night while changes are permitted.
+4. Open a booking pass, scan its QR code, or download the ticket as a PNG or PDF.
+5. Administrators use the dashboard and management pages to oversee bookings and maintain the spot catalog.
 
-## เริ่มใช้งานในเครื่อง
+## User Roles
 
-### 1. Backend
+| Role | Access |
+| --- | --- |
+| Visitor | Browse public market information and spot details; register and log in. |
+| Member | Create bookings, view their own bookings and passes, and change or cancel eligible bookings. |
+| Admin | Manage spots, view and manage all bookings, and access the dashboard. |
+
+Registration collects a name, email, telephone number, role, and password. Login uses email and password. The backend determines authorization for protected operations.
+
+## Features
+
+### Public Pages
+
+- Home page with a market overview, zone information, and an explanation of the booking process.
+- Spot map and list grouped by zone.
+- Spot details including spot number, zone, size, location description, and rental fee.
+- Registration form validation and login/logout flows.
+
+### Member Booking Management
+
+- Book an active spot for a selected date and product type.
+- Review personal bookings in List and monthly Calendar views.
+- Edit the spot, booking date, or product type, and cancel bookings when permitted.
+- Drag bookings to another date, with destination feedback and rule validation.
+- Cancel a drag with **Esc**; rejected moves keep the original booking unchanged.
+- Review upcoming booking counts and the three-spots-per-day allowance.
+
+### Booking Passes
+
+- Ticket-style pass showing the spot, zone, size, booking date, opening time, vendor, and product type.
+- Scannable QR code containing the booking details.
+- Download the ticket as **PNG** or a single-page **PDF**.
+- Countdown to market opening for current or upcoming member bookings.
+- Links to the member's other upcoming passes for active spots.
+- Separate administrator details panel with vendor contact information and a **Back to All bookings** link.
+- Removed or missing spots cannot generate a pass, QR code, or ticket download.
+
+The QR code encodes booking information. It does not implement check-in verification or record market attendance.
+
+### Admin Dashboard and Management
+
+- Dashboard as the default destination after an admin login without a specific return URL.
+- Date selection and four statistics: booking count, remaining active spots, distinct vendors, and total rental fees.
+- Interactive booking chart for seven market nights, zone occupancy bars, and latest bookings.
+- All bookings page with date, zone, and spot-status filters.
+- **All / Available spot / Removed spot** status options.
+- Admin Calendar sorted naturally by spot number, such as **A2, A7, A10, B1**.
+- Three booking chips initially shown per day, with a control to open the complete daily list.
+- Different legend shapes for booking chips and destination day cells.
+- Add and edit spot forms with a live preview, plus a confirmation dialog before deleting a spot.
+
+> In the All bookings status filter, **Available spot** means the referenced spot is still active in the catalog. It does not mean that the spot has no booking for the selected night.
+
+## Booking Rules
+
+1. A booking date must not precede the current date according to the backend's date rules.
+2. A spot can have only one booking per date across vendors.
+3. A member can book up to **three different spots per day**.
+4. A member cannot book the same spot twice on the same date.
+5. Members cannot edit, cancel, or reschedule a booking from **17:00 Bangkok time on its original booking date**. The page directs them to contact an administrator.
+6. The cutoff also applies when a page or confirmation dialog remains open across 17:00. Changing the proposed booking date does not bypass the original booking's cutoff.
+7. Completed bookings remain readable and locked for members, without booking-specific warning messages.
+8. Removed or missing spots cannot issue passes. Current and upcoming bookings show instructions to change the spot or contact an administrator; completed bookings show neutral details without these warnings.
+9. Failed rescheduling attempts leave the booking on its original date.
+
+The frontend provides immediate validation feedback, while the backend enforces ownership and booking constraints. The additional 17:00 rule is enforced by this frontend's UI and Next.js API proxy, which obtains the authenticated role and original booking date from the backend. Administrators are exempt from this additional cutoff; existing backend validation still applies.
+
+## Technology Stack
+
+| Area | Technology |
+| --- | --- |
+| Frontend | Next.js 16 App Router, React 19, TypeScript |
+| Styling | Tailwind CSS 4 |
+| Typography | Anuphan, Bricolage Grotesque |
+| Drag and drop | `@dnd-kit/core` |
+| QR generation | `qrcode` |
+| Sample data seeding | MongoDB Node.js driver (`mongodb`, development dependency) |
+| Ticket export | `html-to-image`, `jspdf` |
+| Authentication | Backend-issued JWT stored in an HttpOnly cookie by Next.js |
+| Backend integration | Node.js, Express, MongoDB/Mongoose REST API |
+| Hosting | Separate frontend and backend deployments on Vercel |
+
+## Run Locally
+
+### Prerequisites and Setup Order
+
+- **Node.js 20.9.0 or later**, npm, and Git.
+- A MongoDB database accessible by the backend and the machine running the seed script.
+- Separate terminals for the backend and frontend.
+
+Use this order: **configure MongoDB → start the backend → configure the frontend → run seed → start the frontend**. Opening the backend welcome page alone does not confirm that its database-backed operations work.
+
+### 1. Install and Configure the Backend
 
 ```bash
-git clone https://github.com/SWDevPrac2-69-1/PJ05-MarketVendorBook.git
-cd PJ05-MarketVendorBook
+git clone https://github.com/Preem-pcn/SWDevPrac2-Final-Backend.git
+cd SWDevPrac2-Final-Backend
 npm ci
-# ใส่ MONGO_URI (MongoDB Atlas) ใน config/config.env
-npm run dev          # http://localhost:<PORT>, API docs ที่ /api-docs
 ```
 
-### 2. Frontend
+**Edit `config/config.env` inside the backend folder.** Follow the backend repository's template if the file needs to be created. Set the following values before starting the backend:
+
+```dotenv
+NODE_ENV=development
+PORT=5000
+MONGO_URI=mongodb+srv://<database-user>:<encoded-password>@<cluster-host>/saengdao?retryWrites=true&w=majority
+JWT_SECRET=<replace-with-your-own-secret>
+JWT_EXPIRE=30d
+JWT_COOKIE_EXPIRE=30
+FRONTEND_URL=http://localhost:3000
+```
+
+**Where to get `MONGO_URI`:** use your MongoDB Atlas cluster's driver connection string. Replace the database username, password, and cluster host with your own values. Use URL-encoded credentials when they contain special characters. The `saengdao` path in the example is the database name; use the same database name for the backend and seed script.
+
+The database user must have access to that database, and Atlas network access must permit connections from the backend and the machine running seed. Do not paste a real connection string into this README or commit it to Git.
+
+Start the backend after saving the configuration:
 
 ```bash
-npm install
-cp .env.example .env.local     # BACKEND_URL=http://localhost:5050
-npm run seed                   # ใส่ข้อมูลตัวอย่าง (รันซ้ำได้ ไม่สร้างซ้ำ)
-npm run dev                    # http://localhost:3000
+npm run dev
 ```
 
-> บน Mac พอร์ต 5000 ถูก AirPlay Receiver ใช้อยู่ ให้ตั้ง `PORT=5050` ใน `config/config.env` ของ backend
+With `PORT=5000`, the API origin is `http://localhost:5000` and Swagger UI is at `http://localhost:5000/api-docs`. If port 5000 is occupied, use another port, such as 5050, and set the frontend's `BACKEND_URL` to the same port.
 
-### ข้อมูลที่ `npm run seed` สร้าง
+### 2. Install and Configure the Frontend
 
-| ข้อมูล | รายละเอียด |
-|---|---|
-| Admin | `admin@saengdao.market` / `admin123` |
-| Member | `somchai@example.com` / `member123` (Somchai Prasert) |
-| Spots (6) | Zone A · Food street: A1, A2 / Zone B · Clothing and crafts: B1, B2 / Zone C · Drinks and desserts: C1, C2 |
-| Booking (1) | Somchai จอง A1 วันที่ 16 พ.ย. 2026 ขาย Grilled food (เป็นคืนที่ผ่านไปแล้ว) |
+In another terminal:
 
-- บัญชีและ spot สร้างผ่าน API ของ backend ตาม `BACKEND_URL`
-- backend ไม่ยอมให้สร้าง booking ย้อนหลังผ่าน API ตัว seed จึงเขียน booking วันที่ 16 ลง MongoDB ตรง ๆ โดยใช้ `MONGO_URI` จาก `../PJ05-MarketVendorBook/config/config.env` (หรือตั้ง `MONGO_URI` ใน `.env.local`) ถ้าหา `MONGO_URI` ไม่เจอจะข้ามขั้นนี้
-- เปลี่ยนวันของ booking ได้ด้วย `PAST_NIGHT=2026-11-15 npm run seed`
-- ถ้าอยากเริ่มใหม่จากศูนย์ ลบ database ใน MongoDB Atlas แล้วรัน seed อีกครั้ง
+```bash
+git clone https://github.com/Preem-pcn/SWDevPrac2-Final-Project.git
+cd SWDevPrac2-Final-Project
+npm ci
+```
 
-## โครงสร้าง
+Copy the environment template using the command for your shell.
+
+**Windows PowerShell**
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+**macOS / Linux**
+
+```bash
+cp .env.example .env.local
+```
+
+**Edit `.env.local` in the frontend folder** and configure both values for the complete seed workflow:
+
+```dotenv
+BACKEND_URL=http://localhost:5000
+MONGO_URI=mongodb+srv://<database-user>:<encoded-password>@<cluster-host>/saengdao?retryWrites=true&w=majority
+```
+
+- `BACKEND_URL` is the backend origin. Do **not** append `/api/v1`; the application adds it automatically.
+- `MONGO_URI` must be **the same connection string and database used by the backend**. It is used locally by the seed script to insert the past booking. The frontend web application itself calls the backend rather than accessing MongoDB directly.
+- `.env.example` currently contains only `BACKEND_URL`; add the `MONGO_URI` line to your local file for seeding.
+- Do not prefix `MONGO_URI` with `NEXT_PUBLIC_` or expose database credentials to browser code.
+- Restart the relevant development server after changing its environment configuration.
+
+The seed script resolves its configuration in this order:
+
+| Variable | Lookup order |
+| --- | --- |
+| `BACKEND_URL` | Shell environment → frontend `.env.local` → `http://localhost:5050` |
+| `MONGO_URI` | Shell environment → frontend `.env.local` → `../PJ05-MarketVendorBook/config/config.env` |
+| `PAST_NIGHT` | Shell environment → `2026-11-16` |
+
+The fallback MongoDB path uses the original backend folder name `PJ05-MarketVendorBook`, **not** `SWDevPrac2-Final-Backend`. If you cloned the repository using its current name, explicitly set `MONGO_URI` in the frontend `.env.local`. Also set `BACKEND_URL` explicitly so the seed script's port-5050 fallback does not disagree with a backend running on port 5000.
+
+### 3. Seed the Database
+
+**Keep the backend running**, then execute this command from the frontend directory:
+
+```bash
+npm run seed
+```
+
+The current seed script creates the following data on an initially empty test database:
+
+| Data | Details |
+| --- | --- |
+| Admin | `admin@saengdao.market` / `admin123` — Kanya Srisuk |
+| Member | `somchai@example.com` / `member123` — Somchai Prasert |
+| Zone A spots | A1 and A2 — Food street |
+| Zone B spots | B1 and B2 — Clothing and crafts |
+| Zone C spots | C1 and C2 — Drinks and desserts |
+| Historical booking | Somchai books A1 on **16 November 2026**, selling **Grilled food** |
+
+Accounts and the six spots are created through the backend API. The backend rejects historical booking creation, so the script inserts the historical booking **directly into MongoDB** using `MONGO_URI`.
+
+Check the terminal output for the spot count, account credentials, historical booking result, and database name. If it prints `Booking: skipped`, the accounts/spots may have been created, but `MONGO_URI` was not found and the historical booking was not inserted. Add the correct URI and rerun seed.
+
+To choose a different historical date, set `PAST_NIGHT` in your shell; this variable is not read from `.env.local` by the current script.
+
+**Windows PowerShell**
+
+```powershell
+$env:PAST_NIGHT = "2026-11-15"
+npm run seed
+Remove-Item Env:PAST_NIGHT
+```
+
+**macOS / Linux**
+
+```bash
+PAST_NIGHT=2026-11-15 npm run seed
+```
+
+Use a date before today when preparing history examples. Repeated runs reuse accounts, skip existing active spots with matching zone/number, and skip a historical booking when that spot/date already exists. Seed does not clear or reset existing records. Changing `PAST_NIGHT` can add another historical booking, and seeding a database with existing data will not force it to contain exactly six spots or one booking.
+
+Use a dedicated test database. Do not reset a shared database just to rerun seed. These credentials describe accounts that seed prepares; a different database does not contain them automatically, and existing accounts must have matching passwords.
+
+### 4. Start the Frontend and Verify the Data
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), then verify:
+
+1. Log in as `somchai@example.com` with `member123` and open **My bookings**. On a fresh seeded database, the A1 booking for 16 November 2026 appears in history.
+2. The completed booking is read-only for the member, without booking-specific warnings. It cannot be edited or cancelled by the member.
+3. Log in as `admin@saengdao.market` with `admin123` and check **Manage spots** for A1, A2, B1, B2, C1, and C2.
+4. Select **16 November 2026** in Dashboard or All bookings to inspect the historical booking. Today's dashboard can legitimately show zero bookings because seed creates a past booking, not an upcoming one.
+5. Create future bookings through the member UI to test editing, cancellation, Calendar drag-and-drop, passes, and upcoming chart data.
+
+### Troubleshooting Setup
+
+| Symptom | What to check |
+| --- | --- |
+| Frontend cannot reach the booking server | Confirm the backend is running and `.env.local` points to its actual origin/port; restart the frontend after changes. |
+| Welcome page works but login or spot APIs fail | Check the backend's `MONGO_URI`, database user permissions, network access, and database connection logs. |
+| Seed creates spots but skips the booking | Set `MONGO_URI` in the frontend `.env.local` or shell; the default fallback folder may not match your backend directory. |
+| Seed reports a MongoDB connection or authentication error | Check the full URI, encoded credentials, database name, and Atlas network access from the machine running seed. |
+| Seed succeeds but the booking is missing in the app | Confirm seed and backend use the same MongoDB database, then refresh the page and select the historical date. |
+| Seeded account cannot log in | Run seed against the intended backend and check whether an existing account uses a different password. |
+| PowerShell blocks `npm.ps1` | Use `npm.cmd ci`, `npm.cmd run seed`, and `npm.cmd run dev`. |
+| HTTP 429 response | Wait for the backend rate-limit window to reset before retrying. |
+
+## Application Routes
+
+| Route | Page | Access |
+| --- | --- | --- |
+| `/` | Home | Public |
+| `/spots` | Spot map and details | Public |
+| `/register` | Registration | Public |
+| `/login` | Login | Public |
+| `/bookings/new` | New booking | Member |
+| `/bookings` | My bookings / All bookings | Member / Admin |
+| `/bookings?view=calendar` | Calendar view | Member / Admin |
+| `/bookings/[id]/pass` | Booking pass and details | Owner / Admin |
+| `/admin` | Dashboard | Admin |
+| `/admin/spots` | Manage spots | Admin |
+| `/admin/spots/new` | Add spot | Admin |
+| `/admin/spots/[id]/edit` | Edit spot | Admin |
+| `/admin/spots/[id]/delete` | Delete confirmation | Admin |
+
+Replace `[id]` with the corresponding backend record ID.
+
+## Project Structure
 
 ```text
 src/
-  app/                      หน้าเว็บ (App Router)
-    api/auth/*              login / register / logout: เก็บ JWT ใน httpOnly cookie
-    api/proxy/[...path]     ส่งต่อ request ไป backend พร้อมแนบ token
-    spots/ bookings/ admin/ login/ register/
-  components/               UI แยกตามหน้า (spots, bookings, admin, auth)
-  lib/                      types, date helpers (UTC), api client, session
-  proxy.ts                  กันหน้า /bookings และ /admin (Next 16 เปลี่ยนชื่อ middleware เป็น proxy)
-scripts/seed.mjs            เตรียมข้อมูลตัวอย่างสำหรับ demo
+  app/
+    api/auth/                Registration, login, and logout handlers
+    api/proxy/[...path]/     Backend forwarding and booking cutoff checks
+    admin/                   Dashboard and spot management routes
+    bookings/                Booking list, creation, and pass routes
+    spots/                   Public spot browsing route
+  components/
+    admin/                   Dashboard and spot management components
+    auth/                    Authentication forms
+    bookings/                List, calendar, pass, and booking dialogs
+    spots/                   Spot map and details
+    extras.css               Styles scoped to the additional screens
+  lib/
+    api.ts                   Browser API client and response cache
+    backend.ts               Server-side backend client
+    booking-policy.ts        Booking cutoff and completed-day rules
+    date.ts                  Date and market-opening helpers
+    session.ts               Server-side session cookie utilities
+  proxy.ts                   Page-level session and role checks
+scripts/
+  seed.mjs                   Sample data preparation
+  test-booking-cutoff.mjs     Cutoff and API proxy regression tests
 ```
 
-**ทำไมเรียก backend ผ่าน `/api/proxy`:** token จะอยู่ใน httpOnly cookie ฝั่ง JavaScript ของ browser อ่านไม่ได้
-และ browser คุยกับ Next.js อย่างเดียว จึงไม่ติด CORS ของ backend ตอน deploy ขึ้น Vercel
+## Authentication and API Integration
 
-## ข้อควรรู้
+```text
+Browser → Next.js API routes → Backend /api/v1 → MongoDB
+```
 
-- **วันที่เป็น UTC ตาม backend:** ช่วง 00:00–07:00 เวลาไทย "วันนี้" ในระบบยังเป็นวันก่อนหน้า
-- **Member เห็นแค่ booking ของตัวเอง:** หน้า Spots ของ member จึงบอกไม่ได้ว่าช่องไหนคนอื่นจองแล้ว ต้องรู้ตอนกดยืนยัน ส่วน admin เห็นครบ
-- **ลบ spot เป็น soft delete:** spot หายจากแผนผัง แต่ booking เดิมยังอยู่และยังนับโควตาของผู้ค้า
-- **Backend จำกัด 100 requests ต่อ 10 นาทีต่อ IP:** หลัง deploy ทุก request ออกจาก server เดียวกัน เว็บจึงลดการยิงเอง: server เก็บข้อมูล spot ไว้ 1 นาทีแล้วใช้ร่วมกันทุกคน, browser เก็บผลไว้ (spot 5 นาที, booking 1 นาที) และล้างทันทีเมื่อมีการจอง/แก้/ลบหรือ login/logout ทั้ง Presentation Journey ใช้ราว 40 requests
+The browser communicates with Next.js authentication and proxy routes. Next.js stores the backend JWT in an HttpOnly cookie and attaches it to server-side backend requests. Browser JavaScript does not need to read the token. The backend remains responsible for authenticating requests and enforcing access to booking records.
 
-## Deploy ขึ้น Vercel
+The frontend proxy forwards spot and booking operations. Registration, login, and logout have separate Next.js handlers. API responses use the backend's `success`, `data`, and `error` fields to display results and validation messages.
 
-1. Deploy backend ให้มี URL สาธารณะ (เช่น Render, Railway หรือ Vercel) และใช้ MongoDB Atlas
-2. Import repo นี้ใน Vercel แล้วตั้ง Environment Variable `BACKEND_URL=https://<backend-url>`
-3. รัน seed ใส่ backend ที่ deploy แล้ว: `BACKEND_URL=https://<backend-url> npm run seed`
+## Checks and Tests
 
-## ลำดับ demo (Presentation Journey)
+Run from the frontend directory:
 
-| ขั้น | ทำที่ |
-|---|---|
-| 1–2 ลงทะเบียน (ลองกรอกผิดก่อน) + login | /register, /login |
-| 3 ดู spot | /spots |
-| 4 สร้าง booking + ลองผิดเงื่อนไข | /spots → Book → ลองจอง spot เดิมคืนเดิมซ้ำ / ใส่วันย้อนหลัง / จอง spot ที่ 4 ในคืนเดียว |
-| 5–7 ดู / แก้ / ลบ booking ของตัวเอง | /bookings (Somchai มี booking วันที่ 16 ที่ผ่านไปแล้ว แก้ไม่ได้แต่ลบได้) |
-| 8 logout | ปุ่ม Log out |
-| 9–12 admin login, ดู / แก้ / ลบ booking ใดก็ได้ | /admin → All bookings |
-| 13 admin สร้าง spot | Manage spots → Add spot |
-| 14 extra | ปฏิทิน, บัตรผ่าน QR, dashboard |
+```bash
+npm run lint
+npx tsc --noEmit
+node scripts/test-booking-cutoff.mjs
+npm run build
+```
+
+The cutoff regression tests cover the Bangkok 17:00 boundary, midnight, member restrictions, the administrator exemption, backend ownership errors, and attempts to bypass the rule through a proposed future booking date or a forged display-role cookie.
+
+These tests use mocked backend responses and do not connect to MongoDB or modify live data. They complement, rather than replace, testing against the actual backend and database.
+
+After a successful production build:
+
+```bash
+npm run start
+```
+
+### Manual Acceptance Checklist
+
+| Scenario | Expected result |
+| --- | --- |
+| Submit invalid registration data | Field validation explains the problem. |
+| Log in as Member and Admin separately | Each role receives the appropriate menus and access. |
+| Book a past date, duplicate spot, occupied spot, or fourth daily spot | The request is rejected with an explanation. |
+| Edit or cancel an eligible booking | The change persists after refreshing. |
+| Keep an edit dialog open across 17:00 | Member actions become locked and an admin-contact message appears. |
+| Open a completed booking | History remains readable without booking-specific warnings. |
+| Drag a booking to a valid future date | Calendar, List, and Pass show the updated date. |
+| Drop on an invalid date or press Esc | The booking remains on its original date. |
+| Scan a QR code and download PNG/PDF | Details match the booking and the complete ticket is visible. |
+| Open a removed-spot booking | No ticket, QR, or download is offered; warnings appear only for bookings whose day has not passed. |
+| Access another member's pass or an admin page as Member | Unauthorized access is denied. |
+| Compare Dashboard with All bookings for the same date | Statistics reflect the same underlying booking data. |
+| Filter bookings and open an admin calendar day | Results match the filters and spot numbers are naturally sorted. |
+| Add, edit, and delete a test spot | Catalog changes persist, with confirmation before deletion. |
+
+Use separate browsers or an Incognito window to keep Member and Admin sessions independent.
+
+## Limitations and Implementation Notes
+
+- **Date handling:** The backend's booking-date validation and several default date selections use UTC. Between 00:00 and 06:59 Bangkok time, the UTC date is still the previous day. The additional opening-time cutoff and completed-day calculation use Bangkok time.
+- **Member availability visibility:** Members can read only their own bookings. The spot map therefore cannot fully determine other vendors' reservations; the backend checks availability when a booking is submitted. Administrators can view all bookings.
+- **Soft-deleted spots:** Removing a spot hides it from the active catalog but preserves existing bookings. Those bookings continue to count toward backend daily limits until moved or deleted.
+- **Pass scope:** QR codes contain booking information; there is no attendance/check-in service or online payment integration.
+- **Rental fees:** Fees are displayed as booking information; the application does not confirm payment collection.
+- **Caching and rate limits:** Cached responses reduce backend traffic. Changes by another user may require refreshing the page, and excessive requests may receive HTTP 429 responses.
+- **Additional cutoff enforcement:** The 17:00 restriction is implemented in this frontend and its Next.js proxy. Other clients calling the backend directly need equivalent backend-side enforcement to share that restriction.
+
+## Deployment
+
+The frontend and backend are deployed as separate Vercel projects, using the links listed above.
+
+For a new deployment:
+
+1. Deploy the backend with its MongoDB connection and authentication environment variables configured.
+2. Import the frontend repository into Vercel.
+3. Set the frontend's server-side `BACKEND_URL` to the backend origin, without `/api/v1`. For the supplied backend deployment:
+
+   ```dotenv
+   BACKEND_URL=https://sw-dev-prac2-final-backend.vercel.app
+   ```
+
+4. Build and deploy the frontend, then test both roles and booking operations through the deployed URL.
+5. To prepare sample data, set the following in your local frontend `.env.local`, then run `npm run seed` from the frontend folder:
+
+   ```dotenv
+   BACKEND_URL=https://sw-dev-prac2-final-backend.vercel.app
+   MONGO_URI=<the exact MongoDB URI and database used by that backend>
+   ```
+
+   The API-created accounts/spots and the directly inserted historical booking must target the same database. The machine running seed needs database network access. The frontend deployment only needs `BACKEND_URL` for normal application operation; `MONGO_URI` here is for running the local seed script.
+
+Keep `.env.local`, MongoDB connection strings, JWT secrets, and real access tokens out of version control.
