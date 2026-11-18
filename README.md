@@ -100,6 +100,7 @@ The frontend provides immediate validation feedback, while the backend enforces 
 | Typography | Anuphan, Bricolage Grotesque |
 | Drag and drop | `@dnd-kit/core` |
 | QR generation | `qrcode` |
+| Sample data seeding | MongoDB Node.js driver (`mongodb`, development dependency) |
 | Ticket export | `html-to-image`, `jspdf` |
 | Authentication | Backend-issued JWT stored in an HttpOnly cookie by Next.js |
 | Backend integration | Node.js, Express, MongoDB/Mongoose REST API |
@@ -107,15 +108,15 @@ The frontend provides immediate validation feedback, while the backend enforces 
 
 ## Run Locally
 
-### Prerequisites
+### Prerequisites and Setup Order
 
-- **Node.js 20.9.0 or later** and npm.
-- Git.
-- A running Project 5 backend connected to MongoDB for database-backed operations.
+- **Node.js 20.9.0 or later**, npm, and Git.
+- A MongoDB database accessible by the backend and the machine running the seed script.
+- Separate terminals for the backend and frontend.
 
-Run the frontend and backend in separate terminals.
+Use this order: **configure MongoDB → start the backend → configure the frontend → run seed → start the frontend**. Opening the backend welcome page alone does not confirm that its database-backed operations work.
 
-### 1. Start the Backend
+### 1. Install and Configure the Backend
 
 ```bash
 git clone https://github.com/Preem-pcn/SWDevPrac2-Final-Backend.git
@@ -123,25 +124,31 @@ cd SWDevPrac2-Final-Backend
 npm ci
 ```
 
-Follow the backend repository's configuration instructions. For local development, configure its MongoDB connection, JWT secret, and port. The Project 5 backend configuration uses values such as:
+**Edit `config/config.env` inside the backend folder.** Follow the backend repository's template if the file needs to be created. Set the following values before starting the backend:
 
 ```dotenv
+NODE_ENV=development
 PORT=5000
-MONGO_URI=<your MongoDB connection string>
-JWT_SECRET=<your own secret>
+MONGO_URI=mongodb+srv://<database-user>:<encoded-password>@<cluster-host>/saengdao?retryWrites=true&w=majority
+JWT_SECRET=<replace-with-your-own-secret>
 JWT_EXPIRE=30d
 JWT_COOKIE_EXPIRE=30
+FRONTEND_URL=http://localhost:3000
 ```
 
-Keep these values in the backend's local configuration or environment, not in the frontend repository. Then start the API using its development script:
+**Where to get `MONGO_URI`:** use your MongoDB Atlas cluster's driver connection string. Replace the database username, password, and cluster host with your own values. Use URL-encoded credentials when they contain special characters. The `saengdao` path in the example is the database name; use the same database name for the backend and seed script.
+
+The database user must have access to that database, and Atlas network access must permit connections from the backend and the machine running seed. Do not paste a real connection string into this README or commit it to Git.
+
+Start the backend after saving the configuration:
 
 ```bash
 npm run dev
 ```
 
-With port 5000 configured, the API origin is `http://localhost:5000`; the Project 5 API documentation is available at `/api-docs`. Database-backed routes require a working MongoDB connection.
+With `PORT=5000`, the API origin is `http://localhost:5000` and Swagger UI is at `http://localhost:5000/api-docs`. If port 5000 is occupied, use another port, such as 5050, and set the frontend's `BACKEND_URL` to the same port.
 
-### 2. Start the Frontend
+### 2. Install and Configure the Frontend
 
 In another terminal:
 
@@ -151,7 +158,7 @@ cd SWDevPrac2-Final-Project
 npm ci
 ```
 
-Copy the frontend environment template.
+Copy the environment template using the command for your shell.
 
 **Windows PowerShell**
 
@@ -165,41 +172,98 @@ Copy-Item .env.example .env.local
 cp .env.example .env.local
 ```
 
-Set the backend origin in `.env.local`:
+**Edit `.env.local` in the frontend folder** and configure both values for the complete seed workflow:
 
 ```dotenv
 BACKEND_URL=http://localhost:5000
+MONGO_URI=mongodb+srv://<database-user>:<encoded-password>@<cluster-host>/saengdao?retryWrites=true&w=majority
 ```
 
-Do not append `/api/v1`: the server-side client adds it automatically. If the backend uses another port, update this value to match and restart the frontend.
+- `BACKEND_URL` is the backend origin. Do **not** append `/api/v1`; the application adds it automatically.
+- `MONGO_URI` must be **the same connection string and database used by the backend**. It is used locally by the seed script to insert the past booking. The frontend web application itself calls the backend rather than accessing MongoDB directly.
+- `.env.example` currently contains only `BACKEND_URL`; add the `MONGO_URI` line to your local file for seeding.
+- Do not prefix `MONGO_URI` with `NEXT_PUBLIC_` or expose database credentials to browser code.
+- Restart the relevant development server after changing its environment configuration.
 
-```bash
-npm run dev
-```
+The seed script resolves its configuration in this order:
 
-Open [http://localhost:3000](http://localhost:3000).
+| Variable | Lookup order |
+| --- | --- |
+| `BACKEND_URL` | Shell environment → frontend `.env.local` → `http://localhost:5050` |
+| `MONGO_URI` | Shell environment → frontend `.env.local` → `../PJ05-MarketVendorBook/config/config.env` |
+| `PAST_NIGHT` | Shell environment → `2026-11-16` |
 
-### 3. Prepare Demo Data
+The fallback MongoDB path uses the original backend folder name `PJ05-MarketVendorBook`, **not** `SWDevPrac2-Final-Backend`. If you cloned the repository using its current name, explicitly set `MONGO_URI` in the frontend `.env.local`. Also set `BACKEND_URL` explicitly so the seed script's port-5050 fallback does not disagree with a backend running on port 5000.
 
-With the backend and database ready, run from the frontend directory:
+### 3. Seed the Database
+
+**Keep the backend running**, then execute this command from the frontend directory:
 
 ```bash
 npm run seed
 ```
 
-The seed script reads `BACKEND_URL` from the environment or `.env.local`. It prepares demo accounts, **36 spots across three zones**, and sample bookings relative to the execution date. The terminal output identifies a suitable busy night for the presentation.
+The current seed script creates the following data on an initially empty test database:
 
-| Role | Email | Demo password |
-| --- | --- | --- |
-| Admin | `admin@saengdao.market` | `admin123` |
-| Member — Somchai | `somchai@example.com` | `member123` |
-| Member — Nok | `nok@example.com` | `member123` |
-| Member — Ploy | `ploy@example.com` | `member123` |
-| Member — Arthit | `arthit@example.com` | `member123` |
+| Data | Details |
+| --- | --- |
+| Admin | `admin@saengdao.market` / `admin123` — Kanya Srisuk |
+| Member | `somchai@example.com` / `member123` — Somchai Prasert |
+| Zone A spots | A1 and A2 — Food street |
+| Zone B spots | B1 and B2 — Clothing and crafts |
+| Zone C spots | C1 and C2 — Drinks and desserts |
+| Historical booking | Somchai books A1 on **16 November 2026**, selling **Grilled food** |
 
-These are accounts prepared by the seed script, not a guarantee that every deployment or database already contains them. Existing accounts must have matching credentials.
+Accounts and the six spots are created through the backend API. The backend rejects historical booking creation, so the script inserts the historical booking **directly into MongoDB** using `MONGO_URI`.
 
-Repeated runs reuse existing accounts and skip existing active spot entries. Booking dates depend on the execution date, so running the script on another day may add bookings for new dates. The script does not reset the database. Use a test or demonstration database.
+Check the terminal output for the spot count, account credentials, historical booking result, and database name. If it prints `Booking: skipped`, the accounts/spots may have been created, but `MONGO_URI` was not found and the historical booking was not inserted. Add the correct URI and rerun seed.
+
+To choose a different historical date, set `PAST_NIGHT` in your shell; this variable is not read from `.env.local` by the current script.
+
+**Windows PowerShell**
+
+```powershell
+$env:PAST_NIGHT = "2026-11-15"
+npm run seed
+Remove-Item Env:PAST_NIGHT
+```
+
+**macOS / Linux**
+
+```bash
+PAST_NIGHT=2026-11-15 npm run seed
+```
+
+Use a date before today when preparing history examples. Repeated runs reuse accounts, skip existing active spots with matching zone/number, and skip a historical booking when that spot/date already exists. Seed does not clear or reset existing records. Changing `PAST_NIGHT` can add another historical booking, and seeding a database with existing data will not force it to contain exactly six spots or one booking.
+
+Use a dedicated test database. Do not reset a shared database just to rerun seed. These credentials describe accounts that seed prepares; a different database does not contain them automatically, and existing accounts must have matching passwords.
+
+### 4. Start the Frontend and Verify the Data
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), then verify:
+
+1. Log in as `somchai@example.com` with `member123` and open **My bookings**. On a fresh seeded database, the A1 booking for 16 November 2026 appears in history.
+2. The completed booking is read-only for the member, without booking-specific warnings. It cannot be edited or cancelled by the member.
+3. Log in as `admin@saengdao.market` with `admin123` and check **Manage spots** for A1, A2, B1, B2, C1, and C2.
+4. Select **16 November 2026** in Dashboard or All bookings to inspect the historical booking. Today's dashboard can legitimately show zero bookings because seed creates a past booking, not an upcoming one.
+5. Create future bookings through the member UI to test editing, cancellation, Calendar drag-and-drop, passes, and upcoming chart data.
+
+### Troubleshooting Setup
+
+| Symptom | What to check |
+| --- | --- |
+| Frontend cannot reach the booking server | Confirm the backend is running and `.env.local` points to its actual origin/port; restart the frontend after changes. |
+| Welcome page works but login or spot APIs fail | Check the backend's `MONGO_URI`, database user permissions, network access, and database connection logs. |
+| Seed creates spots but skips the booking | Set `MONGO_URI` in the frontend `.env.local` or shell; the default fallback folder may not match your backend directory. |
+| Seed reports a MongoDB connection or authentication error | Check the full URI, encoded credentials, database name, and Atlas network access from the machine running seed. |
+| Seed succeeds but the booking is missing in the app | Confirm seed and backend use the same MongoDB database, then refresh the page and select the historical date. |
+| Seeded account cannot log in | Run seed against the intended backend and check whether an existing account uses a different password. |
+| PowerShell blocks `npm.ps1` | Use `npm.cmd ci`, `npm.cmd run seed`, and `npm.cmd run dev`. |
+| HTTP 429 response | Wait for the backend rate-limit window to reset before retrying. |
 
 ## Application Routes
 
@@ -245,7 +309,7 @@ src/
     session.ts               Server-side session cookie utilities
   proxy.ts                   Page-level session and role checks
 scripts/
-  seed.mjs                   Demo data preparation
+  seed.mjs                   Sample data preparation
   test-booking-cutoff.mjs     Cutoff and API proxy regression tests
 ```
 
@@ -301,20 +365,6 @@ npm run start
 
 Use separate browsers or an Incognito window to keep Member and Admin sessions independent.
 
-## Presentation Flow
-
-1. Introduce Home, the market zones, and the Spots map.
-2. Demonstrate registration validation and log in as a Member.
-3. Create a booking for a future date and demonstrate booking-rule validation.
-4. Review, edit, and cancel test bookings in My bookings.
-5. Move a booking in Calendar and verify the date in List; demonstrate Esc or an invalid destination.
-6. Open a pass, scan the QR code, and download PNG/PDF copies.
-7. Log out and sign in as Admin to demonstrate Dashboard statistics.
-8. Open All bookings, use filters, inspect booking details, and expand a calendar day's complete list.
-9. Add, edit, and delete a disposable spot in Manage spots.
-
-Choose future bookings for member-edit demonstrations to avoid the opening-time cutoff. Use disposable test data for cancellation and deletion.
-
 ## Limitations and Implementation Notes
 
 - **Date handling:** The backend's booking-date validation and several default date selections use UTC. Between 00:00 and 06:59 Bangkok time, the UTC date is still the previous day. The additional opening-time cutoff and completed-day calculation use Bangkok time.
@@ -340,6 +390,13 @@ For a new deployment:
    ```
 
 4. Build and deploy the frontend, then test both roles and booking operations through the deployed URL.
-5. If demo data is required, point the local seed script at the intended demonstration backend before running it.
+5. To prepare sample data, set the following in your local frontend `.env.local`, then run `npm run seed` from the frontend folder:
+
+   ```dotenv
+   BACKEND_URL=https://sw-dev-prac2-final-backend.vercel.app
+   MONGO_URI=<the exact MongoDB URI and database used by that backend>
+   ```
+
+   The API-created accounts/spots and the directly inserted historical booking must target the same database. The machine running seed needs database network access. The frontend deployment only needs `BACKEND_URL` for normal application operation; `MONGO_URI` here is for running the local seed script.
 
 Keep `.env.local`, MongoDB connection strings, JWT secrets, and real access tokens out of version control.

@@ -1,87 +1,51 @@
-// Prepares sample data for the presentation: accounts, 36 spots and sample bookings.
+// Prepares a small, predictable data set for the presentation:
+//   - 1 admin and 1 member account
+//   - 6 spots: 3 zones with 2 spots each
+//   - 1 booking by the member on a night that has already passed (16 Nov 2026)
 //
 // Usage:  npm run seed
-//         (reads BACKEND_URL from the shell, else from .env.local, else http://localhost:5050)
 //
-// Safe to run again: existing accounts are reused, existing spots are skipped and
-// bookings that already exist are left alone.
+// Spots and accounts are created through the backend API (BACKEND_URL from the shell,
+// else .env.local, else http://localhost:5050). The backend refuses bookings in the past,
+// so the past booking is written straight to MongoDB with MONGO_URI (from the shell, else
+// .env.local, else ../PJ05-MarketVendorBook/config/config.env).
+//
+// Safe to run again: nothing is created twice.
 
+import dns from "node:dns";
 import { existsSync, readFileSync } from "node:fs";
+import { MongoClient, ObjectId } from "mongodb";
 
-if (!process.env.BACKEND_URL && existsSync(".env.local")) {
-  const line = readFileSync(".env.local", "utf8").split(/\r?\n/).find((l) => l.trim().startsWith("BACKEND_URL="));
-  if (line) process.env.BACKEND_URL = line.split("=").slice(1).join("=").trim().replace(/^["']|["']$/g, "");
-}
-const BASE = (process.env.BACKEND_URL || "http://localhost:5050").replace(/\/$/, "") + "/api/v1";
-console.log(`Seeding ${BASE}\n`);
+const readVar = (file, name) => {
+  if (!existsSync(file)) return undefined;
+  const line = readFileSync(file, "utf8").split(/\r?\n/).find((l) => l.trim().startsWith(`${name}=`));
+  return line?.split("=").slice(1).join("=").trim().replace(/^["']|["']$/g, "") || undefined;
+};
+
+const BACKEND_URL = process.env.BACKEND_URL || readVar(".env.local", "BACKEND_URL") || "http://localhost:5050";
+const MONGO_URI =
+  process.env.MONGO_URI || readVar(".env.local", "MONGO_URI") || readVar("../PJ05-MarketVendorBook/config/config.env", "MONGO_URI");
+const BASE = BACKEND_URL.replace(/\/$/, "") + "/api/v1";
+const PAST_NIGHT = process.env.PAST_NIGHT || "2026-11-16";
 
 const ADMIN = { name: "Kanya Srisuk", email: "admin@saengdao.market", tel: "0811111111", role: "admin", password: "admin123" };
+const MEMBER = { name: "Somchai Prasert", email: "somchai@example.com", tel: "0812345678", role: "member", password: "member123" };
 
-// Members and the bookings each one makes. `in` = days from today (UTC, as the backend uses).
-const MEMBERS = [
-  {
-    user: { name: "Somchai Prasert", email: "somchai@example.com", tel: "0812345678", role: "member", password: "member123" },
-    bookings: [
-      { spot: "B4", in: 7, product: "Handmade bags" },
-      { spot: "C2", in: 8, product: "Thai milk tea" },
-      { spot: "A2", in: 2, product: "Grilled food" },
-    ],
-  },
-  {
-    user: { name: "Nok Wattana", email: "nok@example.com", tel: "0825550199", role: "member", password: "member123" },
-    bookings: [
-      { spot: "A3", in: 7, product: "Pad thai" },
-      { spot: "A4", in: 7, product: "Fresh juice" },
-      { spot: "A9", in: 9, product: "Noodles" },
-      { spot: "A3", in: 1, product: "Pad thai" },
-    ],
-  },
-  {
-    user: { name: "Ploy Sirikul", email: "ploy@example.com", tel: "0834441122", role: "member", password: "member123" },
-    bookings: [
-      { spot: "B7", in: 7, product: "Vintage clothing" },
-      { spot: "B8", in: 10, product: "Handmade crafts" },
-      { spot: "B1", in: 0, product: "Vintage clothing" },
-    ],
-  },
-  {
-    user: { name: "Arthit Chaiya", email: "arthit@example.com", tel: "0846667788", role: "member", password: "member123" },
-    bookings: [
-      { spot: "C5", in: 7, product: "Mango sticky rice" },
-      { spot: "C11", in: 13, product: "Coconut ice cream" },
-      { spot: "A5", in: 13, product: "Grilled food" },
-      { spot: "C1", in: 0, product: "Coconut ice cream" },
-    ],
-  },
+const SPOTS = [
+  { spotNumber: "A1", zone: "A · Food street", spotSize: "2 x 3 m", locationDescription: "First stall from the main gate, left side", rentalFee: 350 },
+  { spotNumber: "A2", zone: "A · Food street", spotSize: "3 x 3 m", locationDescription: "Corner stall facing the car park", rentalFee: 420 },
+  { spotNumber: "B1", zone: "B · Clothing and crafts", spotSize: "2 x 2 m", locationDescription: "Centre lane, next to the fountain", rentalFee: 280 },
+  { spotNumber: "B2", zone: "B · Clothing and crafts", spotSize: "2 x 2 m", locationDescription: "Centre lane, opposite the ATM", rentalFee: 280 },
+  { spotNumber: "C1", zone: "C · Drinks and desserts", spotSize: "2 x 3 m", locationDescription: "Facing the stage", rentalFee: 320 },
+  { spotNumber: "C2", zone: "C · Drinks and desserts", spotSize: "2 x 3 m", locationDescription: "Beside the seating area", rentalFee: 300 },
 ];
 
-const ZONES = [
-  {
-    zone: "A · Food street",
-    fee: (i) => (i % 5 === 0 ? 420 : 350),
-    size: (i) => (i % 5 === 0 ? "3 x 3 m" : "2 x 3 m"),
-    where: (i) => (i <= 6 ? `Stall ${i} from the main gate, left side` : `Stall ${i - 6} from the main gate, right side`),
-  },
-  {
-    zone: "B · Clothing and crafts",
-    fee: () => 280,
-    size: () => "2 x 2 m",
-    where: (i) => (i <= 6 ? `Centre lane, north row, stall ${i}` : `Centre lane, south row, stall ${i - 6}`),
-  },
-  {
-    zone: "C · Drinks and desserts",
-    fee: (i) => (i <= 4 ? 320 : 300),
-    size: () => "2 x 3 m",
-    where: (i) => (i <= 4 ? `Facing the stage, stall ${i}` : `Beside the seating area, stall ${i - 4}`),
-  },
-];
+const PAST_BOOKING = { spot: "A1", night: PAST_NIGHT, productType: "Grilled food" };
 
-const day = (offset) => {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() + offset);
-  return d.toISOString().slice(0, 10);
-};
+function fail(message) {
+  console.error(`\n✗ ${message}\n`);
+  process.exit(1);
+}
 
 async function call(path, { method = "GET", body, token } = {}) {
   let res;
@@ -95,73 +59,79 @@ async function call(path, { method = "GET", body, token } = {}) {
     fail(`Can't reach ${BASE}. Is the backend running on that port?`);
   }
   const text = await res.text();
-  let json;
   try {
-    json = JSON.parse(text);
+    const json = JSON.parse(text);
+    return { ok: res.ok && json.success, status: res.status, json };
   } catch {
     fail(
       `${BASE} answered ${res.status} with something that isn't the booking API.\n` +
-        (res.status === 403
-          ? "On a Mac, port 5000 is taken by AirPlay Receiver. Run the backend on another port (PORT=5050 in config/config.env)\nand set BACKEND_URL=http://localhost:5050 in .env.local."
-          : "Check BACKEND_URL in .env.local."),
+        (res.status === 403 ? "On a Mac, port 5000 is taken by AirPlay Receiver. Use PORT=5050 for the backend." : "Check BACKEND_URL in .env.local."),
     );
   }
-  return { ok: res.ok && json.success, status: res.status, json };
-}
-
-function fail(message) {
-  console.error(`\n✗ ${message}\n`);
-  process.exit(1);
 }
 
 async function account(user) {
   const login = await call("/auth/login", { method: "POST", body: { email: user.email, password: user.password } });
-  if (login.ok) return login.json.data.token;
+  if (login.ok) return login.json.data;
   const reg = await call("/auth/register", { method: "POST", body: user });
   if (!reg.ok) fail(`Could not create ${user.email}: ${reg.json.error ?? reg.status}`);
-  return reg.json.data.token;
+  return reg.json.data;
 }
 
-// 1. Accounts and spots
-const adminToken = await account(ADMIN);
+console.log(`Backend: ${BASE}`);
+
+// 1. Accounts
+const admin = await account(ADMIN);
+const member = await account(MEMBER);
+
+// 2. Spots
 const existing = (await call("/spots")).json.data ?? [];
-const has = new Set(existing.map((s) => `${s.zone}|${s.spotNumber}`));
-let createdSpots = 0;
-for (const z of ZONES) {
-  for (let i = 1; i <= 12; i++) {
-    const spotNumber = `${z.zone[0]}${i}`;
-    if (has.has(`${z.zone}|${spotNumber}`)) continue;
-    const r = await call("/spots", {
-      method: "POST",
-      token: adminToken,
-      body: { spotNumber, zone: z.zone, spotSize: z.size(i), locationDescription: z.where(i), rentalFee: z.fee(i) },
-    });
-    if (!r.ok) fail(`Could not create spot ${spotNumber}: ${r.json.error ?? r.status}`);
-    createdSpots++;
-  }
+let created = 0;
+for (const s of SPOTS) {
+  if (existing.some((e) => e.zone === s.zone && e.spotNumber === s.spotNumber)) continue;
+  const r = await call("/spots", { method: "POST", token: admin.token, body: s });
+  if (!r.ok) fail(`Could not create spot ${s.spotNumber}: ${r.json.error ?? r.status}`);
+  created++;
 }
 const spots = (await call("/spots")).json.data;
-const spotId = (number) => spots.find((s) => s.spotNumber === number && ZONES.some((z) => z.zone === s.zone))?._id;
-console.log(`Spots:    ${createdSpots} created, ${spots.length - createdSpots} already there`);
+console.log(`Spots:    ${created} created, ${SPOTS.length - created} already there`);
 
-// 2. Members and their bookings
-let createdBookings = 0;
-let skipped = 0;
-for (const m of MEMBERS) {
-  const token = await account(m.user);
-  for (const b of m.bookings) {
-    const r = await call("/bookings", {
-      method: "POST",
-      token,
-      body: { spot: spotId(b.spot), bookingDate: day(b.in), productType: b.product },
-    });
-    if (r.ok) createdBookings++;
-    else if (r.status === 409) skipped++;
-    else console.warn(`  ${m.user.name} ${b.spot} on ${day(b.in)}: ${r.json.error}`);
+// 3. Past booking, written directly to MongoDB
+const spot = spots.find((s) => s.spotNumber === PAST_BOOKING.spot && s.zone === SPOTS[0].zone);
+if (!MONGO_URI) {
+  console.log("Booking:  skipped. Set MONGO_URI (same value as the backend's config.env) to add the past booking.");
+} else {
+  try {
+    dns.setServers(["1.1.1.1", "8.8.8.8"]); // same as the backend, for Atlas SRV lookups
+  } catch {}
+  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+  try {
+    await client.connect();
+    const bookings = client.db().collection("bookings");
+    const bookingDate = new Date(`${PAST_BOOKING.night}T00:00:00.000Z`);
+    const filter = { spot: new ObjectId(spot._id), bookingDate };
+    if (await bookings.findOne(filter)) {
+      console.log(`Booking:  ${PAST_BOOKING.spot} on ${PAST_BOOKING.night} already there`);
+    } else {
+      const now = new Date();
+      await bookings.insertOne({
+        ...filter,
+        user: new ObjectId(member.id),
+        productType: PAST_BOOKING.productType,
+        createdAt: now,
+        updatedAt: now,
+        __v: 0,
+      });
+      console.log(`Booking:  ${MEMBER.name} booked ${PAST_BOOKING.spot} on ${PAST_BOOKING.night} (a past night)`);
+    }
+    console.log(`Database: ${client.db().databaseName}`);
+  } catch (e) {
+    fail(`Could not write the past booking to MongoDB: ${e.message}`);
+  } finally {
+    await client.close();
   }
 }
-console.log(`Bookings: ${createdBookings} created, ${skipped} already there or taken`);
-console.log(`\nBusiest night for the demo: ${day(7)} (most vendors booked)\n`);
-console.log("Accounts (all members use password member123):");
+
+console.log("\nAccounts");
 console.log(`  admin   ${ADMIN.email} / ${ADMIN.password}`);
-for (const m of MEMBERS) console.log(`  member  ${m.user.email}`);
+console.log(`  member  ${MEMBER.email} / ${MEMBER.password}`);
